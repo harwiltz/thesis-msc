@@ -1,0 +1,31 @@
+\renewcommand{\abstractname}{Abr\'eg\'e}
+\begin{abstract}
+  Cette th\`ese d\'eveloppe la th\'eorie de l'apprentissage par
+  renforcement au niveau des distributions de probabilit\'e des
+  gains, dans le cas o\`u le temps est continu.
+  Inspir\'es par la litt\'erature du th\'eorie de c\^ontrole optimal
+  et simplement l'apprentissage par renforcement avec l'\'evolution de
+  temps continu, nous d\'emontrons que les algorithmes existants ne
+  peuvent pas toujours parvenir \`a converger sur les distributions de
+  gains propres, m\^eme lorsque l'environment est tr\`es simple. Pour
+  rendre compte de ce r\'esultat, nous caract\'erisons les
+  distributions des gains provoqu\'ees par une classe vaste de
+  processus Markoviens de r\'ecompenses stochastiques. Cette
+  caract\'erisation, qui prend la forme d'une famille d'\'equations
+  differentielles aux d\'eriv\'ees partielles, est ensuite utilis\'ee
+  pour informer la conception d'algorithmes d'apprentissage par
+  renforcement qui mod\`elent les distributions de gains qui
+  \'evoluent continuellement. De plus, nous addressons le probl\`eme
+  de la representation des distributions probabilistes avec l'espace
+  limit\'e, et nous montrons common choisir la representation pour
+  transformer la caract\'erisation des distributions de gains \`a
+  un ensemble d'\'equations Hamilton-Jacobi-Bellman, qui sont
+  omnipr\'esentes dans la litt\'erature du contr\^ole optimal. Nous
+  construisons une algorithme pour apprendre ces representations en
+  temps continu, et nous \'etudions ses propri\'et\'es concernant la
+  convergance vers des distributions de gains stationnaires en cas
+  de l'\'evaluation des strat\'egies. Finalement, nous fournissons une
+  impl\'ementation de cette algorithme avec des r\'esaux
+  profonds, et nous validons ses performances empiriquement contre
+  plusieurs points de r\'ef\'erence.
+\end{abstract}

@@ -1,0 +1,177 @@
+\documentclass[12pt]{report}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage[toc,page]{appendix}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{ifthen}
+\usepackage{longtable}
+\usepackage{mathrsfs}
+\usepackage{natbib}
+\usepackage{parskip}
+\usepackage{palatino}
+\usepackage{quotchap}
+\usepackage{setspace}
+\usepackage{skak} % Chess
+\usepackage[dvipsnames,table]{xcolor}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+\usepackage{pgfplots}
+
+\hypersetup {
+  colorlinks=true,
+  linkcolor=NavyBlue,
+  citecolor=Plum,
+}
+
+\captionsetup{font=footnotesize}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}{Lemma}[chapter]
+\newtheorem{corollary}{Corollary}[chapter]
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+% \newtheorem{definition}{Definition}
+\newtheorem{defbasic}{Definition}
+\newtheorem{assumption}{Assumption}[chapter]
+\newtheorem{remark}{Remark}[chapter]
+
+\newcommand{\myrule}{
+  \begin{center}
+    \begin{tikzpicture}
+      \draw[diamond-diamond](0,0) to (0.25\linewidth,0);
+    \end{tikzpicture}
+  \end{center}
+}
+
+\newenvironment{definition}{%
+  \begin{defbasic}
+  }{\hfill$\bigtriangledown$
+  \end{defbasic}
+}
+    
+
+\newcommand{\Expectation}[2]{\underset{#1}{\mathbf{E}}\left[#2\right]}
+\newcommand{\expectation}[2]{\mathbf{E}_{#1}\left[#2\right]}
+\newcommand{\Expect}[1]{\Expectation{}{#1}}
+\newcommand{\Conditional}[2]{\left. #1\ \right\rvert\ #2}
+\newcommand{\ConditionalExpectation}[3]{\Expectation{#1}{\Conditional{#2}{#3}}}
+\newcommand{\ConditionExpect}[2]{\Expect{\Conditional{#1}{#2}}}
+\newcommand{\indicator}[1]{\mathbf{1}_{\left[#1\right]}}
+\newcommand{\deriv}[2]{\frac{d #1}{d #2}}
+\newcommand{\partialderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\firstvariation}[2]{\frac{\delta #1}{\delta #2}}
+\newcommand{\hessian}[1]{\mathsf{H}_{#1}}
+\newcommand{\jacobian}{\mathsf{J}}
+\newcommand{\characteristic}[1]{\chi_{#1}}
+\newcommand{\dirac}[1]{\delta_{#1}}
+\newcommand{\kl}[2]{D_{\text{KL}}\left(\left. #1\ \right\|\ #2\right)}
+\newcommand{\quantile}[1]{q_{#1}}
+\newcommand{\statistics}[1][]{\zeta_{#1}}
+\newcommand{\statsdomain}[1]{\mathscr{S}_{#1}}
+\newcommand{\statediffuse}[1][\returnmeasure^\pi]{\mathbf{K}^x_{#1}}
+\newcommand{\statsdiffuse}[1][\returnmeasure^\pi]{\mathbf{K}^s_{#1}}
+\newcommand{\uniform}[1]{\mathsf{U}\left(#1\right)}
+\newcommand{\law}[1]{\text{Law}\left(#1\right)}
+\newcommand{\gaussian}[2]{\mathcal{N}\left(#1, #2\right)}
+\newcommand{\pushforward}[2]{{#1}_\sharp #2}
+% Process notation
+% args: condition, param, inner
+\newcommand{\indexed}[3]{\left(#3_{#2}\right)_{#2 #1}}
+\newcommand{\indexedabove}[3][0]{\indexed{\geq #1}{#2}{#3}}
+\newcommand{\indexedin}[3]{\indexed{\in #1}{#2}{#3}}
+\newcommand{\indexedint}[4][1]{\left\{#4_{#2}\right\}_{#2=#1}^{#3}}
+% Tuple processes
+\newcommand{\iindexed}[4]{\left(#3_{#2}, #4_{#2}\right)_{#2 #1}}
+\newcommand{\iindexedabove}[4][0]{\iindexed{\geq #1}{#2}{#3}{#4}}
+\newcommand{\iindexedin}[4]{\iindexed{\in #1}{#2}{#3}{#4}}
+
+\newcommand{\proj}[1]{\iota_{#1}}
+\newcommand{\probset}[2][p]{\mathcal{P}_{#1}\left(#2\right)}
+\newcommand{\wassersteinspace}[2][2]{\mathbf{W}_{#1}\left(#2\right)}
+\newcommand{\wasserspace}[1][2]{\mathbf{W}_{#1}}
+\newcommand{\wassersteinmetric}[2][2]{d_{\wassersteinspace[#1]{#2}}}
+\newcommand{\wassermetric}[1][2]{d_{\wasserspace[#1]}}
+\newcommand{\supremalwassermetric}[1][2]{\overline{d}_{\wasserspace[#1]}}
+\newcommand{\bellmanoperator}[1][\pi]{\mathscr{T}^{#1}}
+
+\newcommand{\cdf}[1][\returnmeasure^\pi]{F_{#1}}
+
+%%% The following is a shortcut for represent <x|A|y> or x^T A y
+\newcommand\usequantumnotation{false}
+\newcommand{\measurement}[3]{
+  \ifthenelse{ \equal{\usequantumnotation}{true} }{
+    \left\langle #1\left\lvert #2\right\rvert #3\right\rangle
+  }{
+    #1^\top #2 #3
+  }
+}
+\newcommand{\quadraticform}[2]{\measurement{#1}{#2}{#1}}
+
+\DeclareMathOperator{\support}{supp}
+\DeclareMathOperator{\identity}{\mathsf{id}}
+\DeclareMathOperator{\trace}{\mathsf{Tr}}
+\DeclareMathOperator{\dimension}{\mathsf{dim}}
+\DeclareMathOperator{\range}{\mathsf{Ran}}
+\DeclareMathOperator{\returnfunction}{\mathscr{J}}
+\DeclareMathOperator{\rewardfunctional}{\mathsf{J}}
+\DeclareMathOperator{\jointspace}{\mathcal{Z}}
+\DeclareMathOperator{\returndistribution}{\varrho}
+\DeclareMathOperator{\returnmeasure}{\eta}
+\DeclareMathOperator{\bootstrap}{\mathsf{J}}
+\DeclareMathOperator{\timeshift}{\mathsf{T}}
+\DeclareMathOperator{\invtimeshift}{\overleftarrow{\timeshift}}
+\DeclareMathOperator{\fortimeshift}{\overrightarrow{\timeshift}}
+\DeclareMathOperator{\eqlaw}{\overset{\mathcal{L}}{=}}
+\DeclareMathOperator{\returnspace}{\mathcal{R}}
+\DeclareMathOperator{\rewardspace}{\returnspace_{\text{rew}}}
+\DeclareMathOperator{\cbrprocess}{\Upsilon}
+
+\renewcommand*{\ttdefault}{cmtt}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  Textual shortcuts   %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\Ito}{Itô}
+\newcommand{\cadlag}{càdlàg}
+
+\fancyhf{} % Clears defaults
+\rhead{\small\emph{\rightmark}}
+
+\begin{document}
+\newgeometry{centering}
+\input{title-page}
+\restoregeometry
+\include{abstract}
+\include{abrege}
+\onehalfspacing
+\include{acknowledgements}
+\pagestyle{fancy}
+\tableofcontents
+\begingroup
+\listoffigures
+\let\clearpage\relax
+\listofalgorithms
+\endgroup
+\include{intro}
+\include{background}
+\include{evolution}
+\include{approx-dp}
+\include{deicide}
+\include{conclusion}
+
+\appendix
+
+\include{appendix-analysis}%\label{app:analysis}
+\include{appendix-measure}%\label{app:measure}
+\include{appendix-stochastic}%\label{app:stochastic}
+\include{appendix-distributions}\label{app:distributions}
+\bibliographystyle{plainnat}
+\bibliography{sources}
+\end{document}

@@ -1,0 +1,17 @@
+\begin{abstract}
+  This thesis develops the theory of distributional reinforcement learning in the continuous-time
+  setting. Inspired by the literature on continuous-time reinforcement learning and optimal control,
+  we demonstrate that existing (discrete-time) distributional reinforcement learning algorithms may
+  fail to converge on the correct return distributions even in very simple environments. To account
+  for this, we characterize the return distributions induced by a broad class of continuous-time
+  stochastic Markov Reward Processes, and we use this characterization to inform distributional
+  reinforcement learning algorithms to account for continuous-time evolution. The characterization
+  takes the form of a family of partial differential equations on the space of return
+  distributions. Furthermore, we address the issue of the representation of arbitrary probability
+  measures with bounded space, and in doing so we show how under a particular choice of
+  representation, the return distributions are characterized by a set of Hamilton-Jacobi-Bellman
+  equations, which are ubiquitous in the optimal control literature. We then demonstrate a
+  construction of a continuous-time distributional algorithm and study its convergence properties in
+  the policy evaluation setting. Finally, we provide an implementation using deep neural networks and
+  evaluate its performance empirically against various benchmarks.
+\end{abstract}

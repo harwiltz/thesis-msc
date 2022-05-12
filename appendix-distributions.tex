@@ -1,0 +1,78 @@
+\chapter{Tempered Distributions}
+A recurring concept in many areas of mathematics, physics, and engineering is
+that of \emph{generalized functions}, known as \emph{distributions}\footnote{Not
+  to be confused with probability distributions.}. One such example is the Dirac
+  delta. Distributions are particularly helpful at formally describing weakened solutions
+  to PDEs by objects that may not be functions.
+
+In this thesis, we will make use of the class of \emph{tempered} distributions,
+whose definition will be given in this appendix. For more details, refer to
+\citet{lax2002functional}.
+
+\begin{definition}[Schwartz Class]
+  Let $X$ be a normed space. A \emph{Schwartz class} is a class $\mathcal{S}$ of rapidly decaying-smooth
+  functions,
+
+  \begin{align*}
+    \mathcal{S} = \left\{f\in C^\infty(X; \mathbf{R}) : \sup_{x\in X}(1 +
+    \|x\|^k)|f^{(m)}(x)|<\infty\quad\forall k,m\in\mathbf{N}\right\}
+  \end{align*}
+\end{definition}
+
+\begin{definition}[Tempered Distribution]\label{def:tempered-distribution}
+  A tempered distribution is an element of the topological dual\footnote{The
+    dual of a normed space is the set of all continuous, linear functionals on
+    that space.} $\mathcal{S}'$
+  of the Schwartz class $\mathcal{S}$.
+\end{definition}
+
+\begin{remark}
+  The Dirac delta is the operator $\delta$ such that $\langle\delta, \phi\rangle
+  = \phi(0)$. Clearly $\delta$ is linear, and since it is bounded,
+  it is continuous. Therefore $\delta$ is indeed a tempered distribution.
+\end{remark}
+
+Tempered distributions admit a notion of differentiability, which can be used to
+define ``distributional" solutions to PDEs.
+
+\begin{definition}[Distributional
+  Derivative]\label{def:distributional-derivative}
+  Let $\mathcal{S}$ be a Schwartz class and $\psi\in\mathcal{S}'$ a tempered
+  distribution. Then $\psi$ has a distributional derivative if there exists a
+  tempered distribution $\psi'$ for which
+
+  \begin{align*}
+    \langle \psi', \phi\rangle &= -\langle\psi,
+    \phi'\rangle\qquad\forall\phi\in\mathcal{S},
+  \end{align*}
+
+  and $\psi'$ is called the distributional derivative of $\psi$.
+\end{definition}
+
+\begin{definition}[Distributional Solutions of Hamilton-Jacobi
+  PDEs]\label{def:distributional-solution}
+  Consider the following PDE,
+  \begin{equation}\label{eq:distributional-solution:pde}
+    \partialderiv{u}{t} = f\circ u + \langle\nabla u, g\rangle +
+    \quadraticform{h}{\hessian{y}u}
+  \end{equation}
+
+  where $u\in C^2(\mathbf{R}_+\times\mathcal{Y};\mathbf{R})$ for a normed space
+  $\mathcal{Y}$.
+
+  Then $\psi\in\mathcal{S}'$ is said to be a \emph{distributional solution} to
+  \eqref{eq:distributional-solution:pde} if
+
+  \begin{align*}
+    &\int_0^\infty\int_{\mathcal{Y}}\phi(t, y)\left(f(\psi(y)) -
+      \partialderiv{}{t}\psi(y)\right)dydt\\
+    &\qquad=\int_{0}^\infty\int_{\mathcal{Y}}\bigg[\langle \psi(y)g(y), \nabla_y\phi(t,
+    y)\rangle - \quadraticform{h(y)}{\psi(y)\hessian{y}\phi(t,
+    y)}\bigg]dydt
+  \end{align*}
+
+  for every test function $\phi\in\mathcal{S}$. This is justified by simply multiplying both sides of
+  \eqref{eq:distributional-solution:pde} by the test function, integrating over
+  $\mathbf{R}_+\times\mathcal{Y}$, and substituting gradient terms of $\psi$
+  with respect to its distributional derivative.
+\end{definition}

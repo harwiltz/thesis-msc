@@ -1,0 +1,10 @@
+./debug
+*~
+*#
+*.aux
+*.log
+*.bbg
+*.blg
+*.toc
+build
+feedback

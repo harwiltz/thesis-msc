@@ -1,0 +1,1123 @@
+\chapter{Approximate Distributional Dynamic Programming}\label{c:approximate-dp}
+
+In order to construct and analyze distributional reinforcement
+learning in continuous time, we may compute the return distribution
+function by solving \eqref{eq:dhjb} at each state. Many algorithms exist for
+solving PDEs, many examples can be readily found within the stochastic optimal
+control literature \citep{fleming2006controlled}. An additional challenge in the
+distributional RL setting is that solutions to \eqref{eq:dhjb} belong to a
+constrained set -- that being the set of probability measures over
+$\mathcal{R}$. The algorithm of Benamou and Brenier
+\citep{benamou2000computational} addresses such constraints, however this
+algorithm works only for fixed, finite time intervals, and scales poorly with
+the episode length. In this chapter, we will construct a tractable method for
+approximating solutions to \eqref{eq:dhjb} via gradient-based iterative
+refinements, inspired by the results discussed in \S\ref{s:gradient-flows}.
+
+As in the case of discrete-time distributional reinforcement learning,
+it is impossible to learn a return distribution function exactly since the space
+of probability measures over $\returnspace$ is infinite-dimensional. The
+continuous time dynamics introduces the additional challenge of time
+discretization. In order to proceed, we will have to resort to
+\emph{approximately} computing the return distribution function, and this
+chapter will discuss how this can be accomplished.
+
+The remainder of this chapter will be structured as follows:
+
+\begin{itemize}
+  \item We will begin by
+illustrating a framework for \textbf{representing probability measures} in
+\S\ref{s:representation}, and we will discuss how \textbf{the choice of
+  representation affects the characterization of return distribution evolution}
+  in continuous time;
+  \item A continuous-time formulation of \textbf{distributional policy
+      evaluation} is
+    analyzed in \S\ref{s:policy-evaluation};
+  \item A brief discussion of the \textbf{distributional optimal control problem}
+    in \S\ref{s:control} concludes the chapter.
+\end{itemize}
+
+\section{Representation of Probability Measures}\label{s:representation}
+In order to represent probability measures in a tractable manner,
+we follow the framework suggested by \citet{Rowland48495} and
+explicitly distinguish between the statistics of a random variable and
+its distribution. In doing so, we restrict the class of probability
+measures that can be modeled to a class of probability measures that
+can be \emph{imputed} from a finite set of \emph{statistical functionals}.
+
+\begin{definition}[Statistical
+  Functional]\label{def:sf}
+  Let $\Omega$ denote a measurable space. A \emph{statistical
+    functional} is a function $s: \probset{\Omega}\to\mathbf{R}$. The
+  values taken by statistical functionals are called \emph{statistics}.
+\end{definition}
+
+\begin{definition}[Imputation Strategy,
+  \citet{Rowland48495}]\label{def:imputation-strategy} 
+  Let $\Omega$ be a measurable space and $N\in\mathbf{N}$. An
+  \emph{imputation strategy} is 
+  a function $\Phi: \statsdomain{\Phi}\to\probset{\Omega}$ such that for any
+  set of statistical functionals $\mathbf{s} = \indexedint{n}{N}{s}$,
+  
+  \begin{align*}
+    \mathbf{s}\circ\Phi = \identity
+  \end{align*}
+
+  where $\statsdomain{\Phi}\subset\mathbf{R}^N$ is the set of \emph{admissible
+  statistics} corresponding to the imputation strategy $\Phi$. For example,
+  the imputation strategy $\Psi: (s_1, s_2)\mapsto\mathcal{N}(s_1, s_2)$ has
+  the domain $\statsdomain{\Psi} = \mathbf{R}\times(0,\infty)$,
+  since the second parameter of $\Psi$ corresponds to the variance of a normal
+  distribution, which must be positive.
+
+  Simply put, an imputation strategy maps a set of statistics to a
+  probability measure with those statistics.
+\end{definition}
+
+Imputation strategies have a very simple definition in the language of
+categories which provides a nice pictorial description.
+
+\begin{proposition}[A categorical perspective on Imputation
+  Strategies]\label{pro:imputation-strategy:categorical}
+  Let $\mathsf{SF}$ and $\mathsf{Pr}$ denote the category of
+  sets of statistical functionals and the category of sets of probability measures
+  respectively, where both are understood as subcategories of
+  $\mathsf{Set}$. An imputation strategy is a \textbf{functor} $\Phi:
+  \mathsf{SF}\to\mathsf{Pr}$. That is, $\Phi$ is a function for which
+  diagrams of the form shown in Figure \ref{fig:functor}
+  commute\footnote{A diagram commutes if for any two nodes (objects)
+    in the diagram, the composition of arrows on any path between
+    those nodes is the same.}.
+\end{proposition}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{graphics/functor.pdf}
+  \caption{Imputation strategy as a functor}
+  \label{fig:functor}
+\end{figure}
+
+There is a number of natural choices for combinations of imputation
+strategies and statistical functionals, and any particular choice may
+have considerable theoretical or computational implications. A few of
+them are described below.
+
+\begin{description}
+  \item[The mean]
+    A very simple choice for the set statistical functionals is the
+    singleton containing the mean functional, $\mathbf{s} =
+    \{\returnmeasure\mapsto\expectation{Z\sim\returnmeasure}{Z}\}$. In
+    fact, distributional RL with this representation is equivalent to
+    standard RL.
+
+  \item[A set of moments]
+    A natural extension from the representation of solely the mean is a
+    representation consisting of a finite number of moments,
+    ${\mathbf{s}(\returnmeasure) =
+    \{\expectation{Z\sim\returnmeasure}{Z^{n_i}} : i\in [N]\}}$ where
+    $\indexedint{i}{N}{n}\subset\mathbf{N}$. Imputation strategies for
+    this representation are non-trivial.
+
+  \item[A set of atoms]
+    A familiar finite-dimensional parameterization of a probability
+    measure over an arbitrary measurable space $(\Omega, \mathcal{F})$
+    with a $\sigma$-finite measure $\mu$ has the form
+
+    \begin{equation}\label{eq:rep:categorical}
+      \hat\returnmeasure(\cdot) = \sum_{i=1}^N\alpha_i\characteristic{p_i}
+    \end{equation}
+
+    where $\indexedint{i}{N}{\alpha}\subset\mathbf{R}_+$,
+    $\sum_i\alpha_i=1$, $\indexedint{i}{N}{p}\subset\mathcal{F}$ is a
+    partition\footnote{A \emph{partition} of a set $A$ is a collection
+      $\indexedint{i}{N}{A}$ such that $i\neq j\implies A_i\cap
+    A_j=\emptyset$ and $\bigcup_iA_i = A$.} of $\Omega$, and $\mu(p_i) = \mu(p_1)$ for each $i\in
+    [N]$. For probability measures over bounded subsets of $\mathbf{R}$,
+    this is equivalent to splitting the subset into intervals of equal
+    length and modeling the probabily masses of a random variable taking a
+    value in each interval. Mathematically, the corresponding statistical
+    functionals are
+
+    \begin{align*}
+      s_i(\hat\returnmeasure) = \expectation{Z\sim\hat\returnmeasure}{\characteristic{p_i}}
+    \end{align*}
+
+    and the imputation strategy is $\Phi(\mathbf{s}) =
+    \sum_is_i\characteristic{p_i}$. An issue with this scheme is that until the
+    return distribution function estimate has converged, operator applications (such
+    as distributional Bellman operators) will yield distributions that are supported
+    on a different set of atoms, which makes these distributions difficult to
+    interpret with respect to the set of statistical functionals. Nonetheless,
+    this approach was taken in the first
+    approach to distributional RL, namely \emph{Categorical Distributional RL}
+    \citep{Bellemare2017ADP} and the C51 algorithm, which solves the discrepancy of
+    support problem by introducing a projection operator that maps categorical
+    distributions to an appropriate set of statistics.
+
+  \item[Quantiles]
+    A very simple imputation strategy can be leveraged if we model the
+    statistical functionals corresponding to evenly spaced
+    \emph{quantiles} of a random variable. Let $Z\in A\subset\mathbf{R}$ be a
+    random variable with $\text{Law}(Z) = \hat\returnmeasure$, where $A$
+    is a compact set. The
+    $\tau$-quantile $\quantile{\hat\returnmeasure}(\tau_i)$ of $\hat\returnmeasure$ is defined as 
+
+    \begin{align*}
+      \quantile{\hat\returnmeasure}(\tau) &= \inf\left\{z\in A :
+        \hat\returnmeasure(Z\leq z) =
+      \tau\right\} 
+      \end{align*}
+
+      It is also known from \citet{koenker1978regression,
+      Dabney2018DistributionalRL} that quantiles can also be expressed via
+      an optimization of the form
+
+      \begin{align*}
+        \quantile{\hat\returnmeasure}(\tau) &=
+        \arg\min_{z\in A}\Expectation{Z\sim\hat\returnmeasure}{\left(\tau\indicator{Z>z}
+        + (1-\tau)\indicator{Z\leq z}\right)|Z - z|}
+      \end{align*}
+
+      We can choose our statistical functionals $\indexedint{i}{N}{s}$ such
+      that $s_i(\hat\returnmeasure) =
+      \quantile{\hat\returnmeasure}(\hat\tau_i)$, where $\tau_i = (i-1)/N$
+      for $i\in [N+1]$, and $\hat\tau_i = (\tau_{i+1} + \tau_i)/2$ for
+      $i\in[N]$. \citet{Dabney2018DistributionalRL} shows that this choice of
+      statistical functionals minimizes the $1$-Wasserstein distance between a
+      distribution and its approximation with a finite number of
+      uniformly-weighted point masses.
+\end{description}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{graphics/representations.pdf}
+  \caption{Examples of imputed probability measures}
+  \label{fig:representations}
+\end{figure}
+
+Perhaps
+the most immediate question is whether or not the statistical
+functionals can be learned exactly (that is, they converge to the
+statistics of the target distribution) by successive Bellman-like
+dynamic programming updates. This property is formalized by the
+following definition.
+
+\begin{definition}[Bellman-Closedness, \citet{Rowland48495}]
+  A set of statistical functionals is said to be \emph{Bellman-closed}
+  if for any MDP and state $x$ in the MDP the statistics
+  $\mathbf{s}(\returnmeasure(\cdot\mid x))$ can be expressed exactly in
+  terms of the discount factor $\gamma$,
+  $\Conditional{\mathbf{s}(\returnmeasure(\cdot\mid X_1))}{X_0=x}$,
+  and $R_0 = \int_0^1\gamma^sr(X_s)ds$.
+\end{definition}
+
+Notably, there are remarkably few Bellman-closed sets of statistical
+functionals.
+
+\begin{theorem}[\citet{Rowland48495}]
+  Among all finite sets of statistical functionals $\mathbf{s} =
+  \indexedint{i}{N}{s}$ having the form
+  $\mathbf{s}(\returnmeasure)=\expectation{Z\sim\returnmeasure}{h(Z)}$
+  for some measurable function $h$, $\mathbf{s}$ is Bellman closed
+  \emph{only if} it has the same span as that of the first $N$ moment
+  functionals.
+\end{theorem}
+
+This tells us that neither the quantile nor the categorical
+representations are Bellman-closed. While this is unfortunate,
+distributional RL algorithms using these representations tend to
+approximate the true return distributions quite well empirically
+\citep{hessel2018rainbow, bellemare2020autonomous}. It turns out that
+these representations are \emph{approximately} Bellman-closed, and
+\citet{Rowland48495} provides statistical rates based on the number of
+statistical functionals used in the representation and the discount factor.
+
+\subsection{Implications of the Representation in Continuous-Time}
+At first glance, the method we choose to represent return
+distributions may seem completely independent of the continuous-time
+problem. However, this is not the case, and we will see that under some
+representations the problem becomes much more complex.
+
+Consider once again the distributional HJB equation
+\eqref{eq:dhjb}. Fix a set of statistical functionals $\mathbf{s} =
+\indexedint{i}{N}{s}$ and suppose now that $\returnmeasure(\cdot\mid
+x) = \Phi(\statistics(x))$ where $\Phi$ is an imputation
+strategy and
+${\statistics(x):x\mapsto\mathbf{s}(\returnmeasure(\cdot\mid x))}$.
+The learning problem reduces to learning $\statistics$.
+
+Searching over a space of admissible statistics can be a lot more convenient
+than searching over a space of probability measures. Indeed, many spaces of
+admissible statistics are Euclidean, which is far from the case for spaces of
+probability measures. Because of this, operations in the space of admissible
+statistics tend to be much more intuitive. As such, a characterisation of return
+distribution functions in terms of statistical functionals will be very useful
+for designing algorithms. Theorem \ref{thm:shjb} demonstrates such a
+characterization.
+
+In Theorem \ref{thm:shjb}, we make use of vectorized equations, which consist of
+notation that is common in multivariable calculus and linear algebra. In
+particular, recall that the \emph{Jacobian} $\jacobian\vec{v}$ of a
+vector-valued function $\vec{v}:\mathbf{R}^m\to\mathbf{R}^n$ is a matrix in
+$\mathbf{R}^{n\times m}$ such that $[\jacobian\vec{v}(x)]_{ij}
+=\partialderiv{\vec{v}_i}{x_j}(x)$, and the Hessian $\hessian{}f$ of a function
+$f:\mathbf{R}^m\to\mathbf{R}$ is a matrix in $\mathbf{R}^{m\times m}$ where
+$[\hessian{}f(x)]_{ij} = \frac{\partial^2f(x)}{\partial x_i\partial x_j}$.
+Moreover, in order to derive a robust characterization of the return
+distribution, we will require a mild regularity condition on the imputation
+strategy.
+
+\begin{definition}[Statistical Smoothness]\label{def:statistical-smoothness}
+  An imputation strategy $\Phi:\statsdomain{\Phi}\to\probset[p]{\returnspace}$ is called
+  \emph{statistically smooth} if
+  $\Phi(s)$ is a
+  \hyperref[def:tempered-distribution]{tempered distribution} (see Appendix
+  \ref{app:distributions}) for each $s\in\statsdomain{\Phi}$. Likewise,
+  a return distribution function $\returnmeasure$ is said to be
+  statistically smooth if $\cdf{\returnmeasure}(x, \cdot)$ is a tempered
+  distribution for each $x\in\mathcal{X}$ and $\cdf{\returnmeasure}(\cdot, z)$
+  is twice continuously differentiable almost everywhere for each
+  $z\in\returnspace$.
+\end{definition}
+
+Additionally, we will introduce the following terms for the purpose of improving
+legibility and garnering intuition.
+
+\begin{definition}[Spatial Diffusivity]\label{def:diffusivity:spatial}
+  Let $\Phi:\statsdomain{\Phi}\to\probset{\returnspace}$ be a statistically
+  smooth imputation
+  strategy and $\indexedabove{t}{X}\subset\mathcal{X}\subset\mathbf{R}^d$ an \Ito\ diffusion given by
+
+  \begin{align*}
+    dX_t = f_\pi(X_t)dt + \pmb{\sigma}_\pi(X_t)dB_t
+  \end{align*}
+
+  The \emph{spatial diffusivity} of the random return under the imputation
+  strategy $\Phi$ is defined as the mapping
+  $\statediffuse:\mathcal{X}\times\mathcal{R}\to\mathbf{R}^{d\times d}$ given by
+  \begin{align*}
+    \statediffuse(x,z) &=
+    \sum_{i=1}^N\nabla_i\Phi(\statistics(x))(z)\hessian{}\statistics^i(x)
+  \end{align*}
+\end{definition}
+
+More intuitively, the spatial diffusivity is a term defined by the stochasticity
+of the return due to the stochasticity of the state process. We will also
+identify a similar term due to the stochasticity of the return due to the
+variability of the statistics as a result of the  stochasticity in the state
+process.
+
+\begin{definition}[Statistical Diffusivity]\label{def:diffusivity:statistical}
+  Let $\Phi:\statsdomain{\Phi}\to\probset{\returnspace}$ be a statistically
+  smooth imputation strategy and
+  $\indexedabove{t}{X}\subset\mathcal{X}\subset\mathbf{R}^d$ an \Ito\ diffusion
+  like that of Definition \ref{def:diffusivity:spatial}. The \emph{statistical
+  diffusivity} of the random return under the imputation strategy $\Phi$ is
+  defined as the mapping
+  $\statsdiffuse:\mathcal{X}\times\returnspace\to\mathbf{R}^{d\times d}$ given
+  by
+  \begin{align*}
+    \statsdiffuse(x,z) &=
+    \quadraticform{\statistics{}_x(x)}{\left(\frac{\partial^2}{\partial
+    z^2}\Phi(\statistics(x))(z)\right)}
+  \end{align*}
+\end{definition}
+
+We can now analyze the return distribution functions characterized by
+\eqref{eq:dhjb} with respect to imputation strategies and statistical
+functionals.
+
+\begin{theorem}[The Statistical HJB Loss for Policy Evaluation]\label{thm:shjb}
+  Let the assumptions of Corollary
+  \ref{cor:dhjb} hold. In particular, recall that the state dynamics of the
+  agent following policy $\pi$ are given by
+
+  \begin{align*}
+    dX_t = f_\pi(X_t)dt + \pmb{\sigma}_\pi(X_t)dB_t &&
+    X_t\in\mathcal{X}\subset\mathbf{R}^d
+  \end{align*}
+
+  For any statistically smooth
+  imputation strategy $\Phi:\statsdomain{\Phi}\to\probset{\returnspace}$ on a
+  space of admissible statistics $\statsdomain{\Phi}\subset\mathbf{R}^N$ and
+  a corresponding set of statistical functionals
+  ${\mathbf{s}:\probset{\returnspace}\to\statsdomain{\Phi}}$
+  as defined above such that $\mathbf{s}\circ\Phi=\identity$, we define the
+  following terms,
+
+  \begin{align}
+    \statistics(x) &= \mathbf{s}(\returnmeasure^\pi(\cdot\mid x)) &&
+    \mathcal{X}\to\statsdomain{\Phi}\\
+    \statistics{}_x(x) &= \jacobian_x\statistics(x) &&
+    \mathcal{X}\to\mathbf{R}^{N\times d}
+  \end{align}
+
+  We define the \emph{Statistical HJB Loss} by the following equation,
+
+  \begin{equation}
+    \label{eq:shjb}
+    \begin{aligned}
+      \mathcal{L}_S(\statistics(x), \Phi) &=
+      \measurement{\nabla_{\statistics}\cdf[\Phi(\statistics)](x,
+      z)}{\statistics{}_x(x)}{f_\pi(x)} -(r(x) + \log\gamma
+      z)\otimes\partialderiv{}{z}\cdf[\Phi(\statistics)](x, z)\\
+      &\qquad
+      +\frac{1}{2}\quadraticform{\pmb{\sigma}_\pi(x)}{\left(\statediffuse(x,z) +
+        \statsdiffuse(x,z)\right)}
+    \end{aligned}
+  \end{equation}
+
+  where $\statediffuse, \statsdiffuse$ are the spatial diffusivity and the
+  statistical diffusivity respectively.
+
+  Then if $\cdf[\returnmeasure]$ satisfies \eqref{eq:dhjb} and
+  $\cdf[\returnmeasure(x)] = \Phi(\statistics(x))$, it is necessary
+  that $\mathcal{L}_S(\statistics(x), \Phi) = 0$.
+\end{theorem}
+\begin{proof}
+  This is simply proved by applications of the chain rule to \eqref{eq:dhjb}.
+\end{proof}
+
+Theorem \ref{thm:shjb} presents a condition for the return
+distribution function that is formulated as a loss, as opposed to a
+PDE, since generally the probability measures that we impute from a
+finite collection of statistics do not form a rich enough class to
+satisfy the distributional HJB equation exactly. Thus, we cannot
+expect to characterize these probability measures like we
+did in Theorem \ref{thm:dhjb}. Equation \eqref{eq:shjb} can reasonably
+be interpreted as a loss function for distributional policy
+evaluation, since it is minimized when the statistics are sufficient to
+encode the return distribution function accurately.
+
+It looks like we have taken a step backward here, as
+\eqref{eq:shjb} appears substantially more complex than
+\eqref{eq:dhjb}. However, it turns out that a weaker form of
+\eqref{eq:shjb} exists that is greatly simplified when the imputation
+strategy has a particular structure.
+
+\begin{corollary}
+  \label{cor:shjb}
+  In the context of Theorem \ref{thm:shjb}, if $\Phi$ has the form
+
+  \begin{equation}\label{eq:rep:dirac}
+    \Phi(\statistics(x)) = \frac{1}{N}\sum_{i=1}^N\dirac{\statistics^i(x)},
+  \end{equation}
+
+  then at each state $x\in\mathcal{X}$, the following system is satisfied by the statistics $\{\statistics^i(x)\}_{i=1}^N$:
+
+  \begin{equation}
+    \label{eq:shjb:dirac}
+    \begin{cases}
+      0
+      = \left\langle\nabla_i\statistics(x), f_\pi(x)\right\rangle +
+        r(x) + \statistics^i(x)\log\gamma +
+        \frac{1}{2}\trace\left(\quadraticform{\pmb{\sigma}_\pi(x)}{\hessian{x}\statistics^i(x)}\right)\\
+      \mathbf{s}^i(\returnmeasure(\cdot\mid x)) = \statistics^i(x)\\
+      i = 1,\dots,N\\
+    \end{cases}
+  \end{equation}
+
+  in the \hyperref[def:distributional-derivative]{distributional sense} (see
+  Appendix \ref{app:distributions}, definition
+  \ref{def:distributional-solution}).
+\end{corollary}
+
+\newcommand{\xxX}{\mathcal{X}}
+\newcommand{\xxf}{f_\pi}
+\newcommand{\xxs}{\pmb{\sigma}_\pi}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+
+\begin{proof}
+  Let $\phi:\mathcal{X}\times\returnspace\to\R$ be an arbitrary test
+  function in the Schwartz class $\mathscr{S}$, and let $\returnmeasure
+  = \Phi(\statistics(x))$ such that $\cdf[\returnmeasure]$ is a
+  distributional solution to \eqref{eq:dhjb:ito}.
+  Denote by $\vartheta:\R\to[0,1]$ the Heaviside step function $\vartheta(z) = \indicator{z>0}$. Then, we have that
+  \begin{align*}
+    0
+    &= \int_{\xxX\times\returnspace}\bigg[\phi(x,
+      z)\left\langle\nabla_x\sum_{k=1}^N\vartheta(z -
+      \proj{k}\statistics(x)), \xxf(x)\right\rangle - \phi(x, z)(r(x)
+      + z\log\gamma)\partialderiv{}{z}\sum_{k=1}^N\vartheta(z -
+      \proj{k}\statistics(x))\\
+    &\qquad\qquad\qquad + \frac{1}{2}\phi(x,
+      z)\trace\left(\quadraticform{\xxs(x)}{\left(\hessian{x}\sum_{k=1}^N\vartheta(z
+      -\proj{k}\statistics(x))\right)}\right)\bigg]dzdx\\ 
+    &= \int_{\xxX\times\returnspace}\bigg[\left\langle\phi(x,
+      z)\nabla_x\sum_{k=1}^N\vartheta(z - \proj{k}\statistics(x)),
+      \xxf(x)\right\rangle - \phi(x, z)(r(x) +
+      z\log\gamma)\partialderiv{}{z}\sum_{k=1}^N\vartheta(z -
+      \proj{k}\statistics(x))\\ 
+    &\qquad\qquad\qquad +
+      \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\phi(x,z)\left(\hessian{x}\sum_{k=1}^N\vartheta(z
+      -\proj{k}\statistics(x))\right)}\right)\bigg]dzdx\\ 
+  \end{align*}
+    
+  Taking distributional derivatives once, the Heaviside step functions are transformed into Dirac distributions, yielding
+  \begin{align*}
+    0
+    &= \int_{\xxX\times\returnspace}\bigg[\left\langle-\phi(x,
+      z)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x),
+      \xxf(x)\right\rangle - \phi(x, z)(r(x) +
+      z\log\gamma)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\\ 
+    &\qquad\qquad\qquad -
+      \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\phi(x,z)\left(\nabla_x\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\right)\nabla_x\proj{k}\statistics(x)}\right)\bigg]dzdx\\
+  \end{align*}
+  Next, we carry out the second spatial derivative.
+  \begin{align*}
+    0
+    &= \int_{\xxX\times\returnspace}\bigg[\left\langle-\phi(x,
+      z)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x),
+      \xxf(x)\right\rangle - \phi(x, z)(r(x) +
+      z\log\gamma)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\\ 
+    &\qquad\qquad\qquad -
+      \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\phi(x,z)\left(\nabla_x\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)\right)}\right)\bigg]dzdx\\ 
+    &= \int_{\xxX\times\returnspace}\bigg[\left\langle-\phi(x,
+      z)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x),
+      \xxf(x)\right\rangle - \phi(x, z)(r(x) +
+      z\log\gamma)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\\ 
+    &\qquad\qquad\qquad -
+      \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\phi(x,z)\sum_{k=1}^N\bigg[\nabla_x\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)
+      +
+      \dirac{\proj{k}\statistics(x)}(z)\hessian{x}\proj{k}\statistics(x)\bigg]}\right)\bigg]dzdx\\ 
+    &= \int_{\xxX\times\returnspace}\phi(x,
+      z)\bigg[\left\langle\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x),
+      \xxf(x)\right\rangle + (r(x) +
+      z\log\gamma)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\\ 
+    &\qquad\qquad\qquad\quad +
+      \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\sum_{k=1}^N
+      \dirac{\proj{k}\statistics(x)}(z)\hessian{x}\proj{k}\statistics(x)}\right)\bigg]dzdx\\ 
+    &\qquad\qquad\qquad\quad + \frac{1}{2}
+      \overbrace{\int_{\xxX\times\returnspace}\trace\left(\quadraticform{\xxs(x)}{\phi(x,
+      z)\nabla_x\dirac{\proj{k}\statistics(x)}(z)\nabla_x\statistics(x)}\right)dzdx}^{(a)}\\ 
+  \end{align*}
+    
+  We isolate the term $(a)$ as it involves the (distributional)
+  derivative of the Dirac distribution, which is a strange
+  object. However, since our equation holds for any test function
+  $\phi$, we will show that, with the right choice of test function,
+  $(a) = 0$. 
+    
+  Choose any $\overline{x}\in\xxX$ and let $\epsilon>0$. Then let
+  $\phi(x, z) = \varrho_\epsilon(x)\psi(z)$ where
+  $\varrho_\epsilon:\xxX\to\R$ and $\psi:\returnspace\to\R$ are
+  members of the Schwartz class $\mathscr{S}$. 
+  We define $\varrho_\epsilon(x)$ as follows,
+    
+  \begin{align*}
+    \varrho_\epsilon(x) &= \frac{1}{\epsilon\sqrt{\pi}}\exp\left(-\frac{\norm{x - \overline{x}}^2}{\epsilon^2}\right)
+  \end{align*}
+
+  It is well known that $\varrho_\epsilon$ is a Schwartz function
+  \citep{lax2002functional}. Moreover, since
+  $\nabla_x\varrho_\epsilon(\overline{x}) = 0$ and $\varrho_\epsilon$
+  is smooth, we can find a neighborhood $B$ of $\overline{x}$ so small
+  that $\sup_{x_1,x_2\in B}\norm{x_1 - x_2}\leq\epsilon$. We are left
+  with
+    
+  \begin{align*}
+    (a) &= \lim_{\epsilon\to
+          0}\bigg[\int_{B}\int_{\returnspace}\trace\left(\quadraticform{\xxs(x)}{\phi(x,
+          z)\nabla_x\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)}\right)dzdx\\ 
+        &\qquad\qquad+ \int_{\xxX\setminus
+          B}\int_{\returnspace}\trace\left(\quadraticform{\xxs(x)}{\phi(x,
+          z)\nabla_x\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)}\right)dzdx\bigg]\\ 
+        &= \lim_{\epsilon\to
+          0}\bigg[-\overbrace{\int_{B}\int_{\returnspace}\trace\left(\quadraticform{\xxs(x)}{\psi(z)\nabla_x\varrho_{\epsilon(x)}\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)}\right)dzdx}^{\mathcal{M}_\epsilon}\\
+        &\qquad\qquad- \overbrace{\int_{\xxX\setminus
+          B}\int_{\returnspace}\trace\left(\quadraticform{\xxs(x)}{\psi(z)\nabla_x\varrho_{\epsilon}(x)\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)}\right)dzdx}^{\mathcal{E}_\epsilon}\bigg]\\ 
+  \end{align*}
+    
+  It is also well-known $\lim_{\epsilon\to 0}\varrho_\epsilon =
+  \dirac{\overline{x}}$ \citep{lax2002functional}. Since necessarily
+  $\overline{x}\not\in\xxX\setminus B$, the term
+  $\mathcal{E}_\epsilon$ vanishes. Given that $\sup_{x_1,x_2\in
+    B}\norm{x_1-x_2}\leq\epsilon$, we have
+    
+  \begin{align*}
+    |\mathcal{M}_\epsilon|
+    &\leq \epsilon\sup_{x\in
+      B}\left|\int_{\returnspace}\trace\left(\quadraticform{\xxs(x)}{\psi(z)\dirac{\proj{k}\statistics(x)}(z)\nabla_x\proj{k}\statistics(x)}\right)dz\right|\\
+    &= \epsilon\sup_{x\in
+      B}\left|\trace\left(\quadraticform{\xxs(x)}{\psi(\proj{k}\statistics(x))\nabla_x\proj{k}\statistics(x)}\right)dz\right|\\
+  \end{align*}
+    
+  By the assumption that $\statistics(x)$ is almost-everywhere
+  differentiable, the supremum above is bounded for almost every
+  $\overline{x}$, and it follows that $|\mathcal{M}_\epsilon|\to 0$
+  almost surely.
+    
+  We are left with the following equation:
+    
+  \begin{equation*}
+    \scriptsize
+    \begin{aligned}
+      0
+      &= \lim_{\epsilon\to
+        0}\int_{\xxX}\int_{\returnspace}\varrho_\epsilon(x)\psi(
+        z)\sum_{k=1}^N\dirac{\proj{k}\statistics(x)}(z)\bigg[\langle\nabla_x\proj{k}\statistics(x),
+        \xxf(x)\rangle + r(x) + z\log\gamma
+        +\frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\hessian{x}\proj{k}\statistics(x)}\right)\bigg]dzdx
+    \end{aligned}
+  \end{equation*}
+    
+  Given that $\Phi(\statistics(x))$ is statistically smooth, it is a
+  tempered distribution, so this limit exists. We mentioned previously
+  that $\varrho_\epsilon\to\dirac{\overline{x}}$, so we have
+
+  \begin{equation*}
+    \begin{aligned}
+      0
+      &=
+        \int_{\returnspace}\psi(z)\sum_{k=1}^N\dirac{\proj{k}\statistics(\overline{x})}(z)\bigg[\langle\nabla_x\proj{k}\statistics(\overline{x}),
+        \xxf(\overline{x})\rangle + r(\overline{x}) + z\log\gamma
+        +\frac{1}{2}\trace\left(\quadraticform{\xxs(\overline{x})}{\hessian{x}\proj{k}\statistics(\overline{x})}\right)\bigg]dz
+    \end{aligned}
+  \end{equation*}
+    
+  It follows by definition that $\Phi(\statistics(x))$ is a distributional solution to
+    
+  \begin{equation*}
+    \begin{aligned}
+      0
+      &=
+        \sum_{k=1}^N\dirac{\proj{k}\statistics(\overline{x})}(z)\bigg[\langle\nabla_x\proj{k}\statistics(\overline{x}),
+        \xxf(\overline{x})\rangle + r(\overline{x}) + z\log\gamma
+        +\frac{1}{2}\trace\left(\quadraticform{\pmb{\sigma}_\pi(\overline{x})}{\hessian{x}\proj{k}\statistics(\overline{x})}\right)\bigg]
+    \end{aligned}
+  \end{equation*}
+    
+  Note that the equation above is a sum of weighted Diracs. Thus, the
+  only way for it to be satisfied is if each of the terms in the sum
+  individually vanishes. So, we have shown that for each $k\in[N]$ and
+  almost every $x\in\xxX$, the statistics function
+  $\proj{k}\statistics$ is a distributional solution of
+    
+  \begin{align*}
+    0 &= \langle\nabla_x\proj{k}\statistics(x), \xxf(x)\rangle + r(x)
+        + \proj{k}\statistics(x)\log\gamma +
+        \frac{1}{2}\trace\left(\quadraticform{\xxs(x)}{\hessian{x}\proj{k}\statistics(x)}\right)
+  \end{align*}
+    
+  This completes the proof.
+\end{proof}
+
+%\begin{proof}
+%  Let $\varphi\in C^1_0(\returnspace)$ be an arbitrary test
+%  function. We'll calculate the derivatives of $\Phi$ in \eqref{eq:shjb} in the
+%  weak sense given that $\Phi$ is a sum of diracs. First, note that
+%  the CDF of $\Phi$ is in fact a sum of Heavyside (step) functions
+%  $\indicator{\cdot>s}$ at
+%  the Dirac locations, assuming without loss of generality that the
+%  statistics are sorted in increasing order. We have
+%  \begin{align*}
+%    \int_{\returnspace}[\nabla\Phi(\{s\})](z)\varphi(s)ds
+%    &= [\Phi(\{s\})](z)\varphi(s) -
+%      \int_{\returnspace}[\Phi(\{s\})](z)\varphi'(s)ds\\
+%    &= -\frac{1}{N}\int_{\returnspace}\indicator{z>s}\varphi'(s)ds\\
+%    &= \frac{1}{N}\int_{\returnspace}\sum_{i=1}^N\indicator{s>z}\varphi'(s)
+%  \end{align*}
+%
+%  Therefore $-\frac{1}{N}\dirac{\statistics^i(x)}$ is the distributional
+%  gradient of $\Phi$ with respect to $\statistics^i(x)$.
+%
+%  Moreover,
+%
+%  \begin{align*}
+%    \int_{\returnspace}\partialderiv{}{z}[\Phi(\statistics(x))](z)\varphi(z)dz
+%    &= -\int_{\returnspace}[\Phi(\statistics(x))](z)\varphi'(z)dz\\
+%    &= -\frac{1}{N}\int_{\returnspace}\sum_{i=1}^N\indicator{z>\statistics^i(x)}\varphi'(z)dz\\
+%  \end{align*}
+%
+%  so it follows that
+%  $z\mapsto\frac{1}{N}\sum_i\dirac{\statistics^i(x)}(z)$ is the distributional
+%  derivative of $\Phi(\statistics(x))$. Substituting into
+%  \eqref{eq:shjb}, exploiting the linearity of the distributional derivative,
+%  and noting that $\hessian{}\Phi = 0$, \eqref{eq:shjb:dirac} is yielded.
+%
+%  The final claim is simply a special case of \eqref{eq:shjb:dirac},
+%  substituting the statistical functionals with quantile functions and
+%  writing the sum as an expectation.
+%\end{proof}
+
+\begin{remark}
+  A similar statement to Corollary \ref{cor:shjb} \emph{cannot} be
+  made for arbitrary representations, even if they're finite-dimensional (such
+  as a categorical distribution). The simplicity of \eqref{eq:shjb:dirac} is a
+  consequence of the \hyperref[def:diffusivity]{statistical diffusivity} of the
+  return vanishing under the representation \eqref{eq:rep:dirac}. Additionally,
+  this representation admits a simplified form of the spatial diffusivity of the
+  return.
+\end{remark}
+
+\section{Policy Evaluation}\label{s:policy-evaluation}
+In this section, we will look at how policy evaluation can be achieved
+via the analysis of an
+optimization problem in the space of probability measures. As foreshadowed in
+\S\ref{s:gradient-flows}, we will proceed by studying continuous-time
+distributional policy evaluation as a gradient flow in the space of probability
+measures. While discrete-time iterative RL algorithms estimate the return
+distribution function with a sequence of iterates
+$\indexedint{k}{\infty}{\returnmeasure}$ where $\returnmeasure_{k+1} =
+\bellmanoperator\returnmeasure_k$, our continuous-time formulation of
+policy evaluation will take the form of a \emph{curve}
+$\indexedabove{\tau}{\returnmeasure}$ in the space of
+probability measures satisfying the \hyperref[eq:continuity-equation]{continuity
+equation} akin to \eqref{eq:continuity-equation},
+
+\begin{align*}
+  \partialderiv{}{\tau}\returndistribution_\tau(\cdot\mid x) +
+  \nabla\cdot(\returndistribution_\tau(\cdot\mid x)\mathbf{v}(x)) &= 0\qquad
+  \forall x\in\mathcal{X}
+\end{align*}
+
+Here $\returndistribution_\tau(\cdot\mid x)$ corresponds to the density function of
+$\returnmeasure_\tau(\cdot\mid x)$, and $\mathbf{v}$ is a vector field that can be
+interpreted as an update rule for a collection of ``particles" whose density is
+$\returndistribution_\tau(\cdot\mid x)$ \citep{santambrogio2015optimal}. It is
+well-known that solutions to continuity equations are measure-preserving
+\citep{ullrich2011time}, which ensures that each point on the curve
+$\indexedabove{\tau}{\returnmeasure}$ is a proper probability measure.
+
+We will consider once again the
+\hyperref[def:truncated-return]{truncated return process}
+$\indexedabove{t}{J}=(X_t, \overline{G}_t)_{t\geq 0}$ and let
+$\returnmeasure^\pi(A\mid x) = \Pr(\overline{G}_T\in A\mid X_0 = x)$ be
+the return measure function, where $T$ is the
+\hyperref[def:stopping-time]{stopping time} defined in Proposition
+\ref{pro:stopping-time}. As usual, we assume that
+$\returnmeasure^\pi(\cdot\mid x)$ is absolutely continuous with
+respect to the Lebesgue measure for each state
+$x\in\mathcal{X}$.
+
+Our goal ultimately is to construct a process
+$\indexedabove{\tau}{\returnmeasure}$ such that
+$\returnmeasure_\tau\to\returnmeasure^\pi$ in a ``reasonable''
+topology. This process should be understood as an analogue to the sequence
+$\{(\bellmanoperator)^kQ_0\}_{k=0}^\infty$ in discrete-time reinforcement
+learning. We are faced with the following challenges,
+
+\begin{enumerate}
+\item We must find a suitable topology in which convergence will hold in a
+  meaningful sense (for instance, the topology induced by the total variation
+  distance will not suffice, as explained in \S\ref{s:distributional-rl});
+\item In order to produce a realizable algorithm for policy evaluation, we have
+  to find a discrete-time approximation $\indexedint{k}{\infty}{\returnmeasure^\delta}$
+  of $\indexedabove{\tau}{\returnmeasure}$
+  that converges to $\indexedabove{\tau}{\returnmeasure}$ in the limit of
+  infinitesimal timesteps, where $\delta\to 0$. 
+\end{enumerate}
+
+Fortunately, following the results discussed in \S\ref{s:gradient-flows}, we
+will simultaneously circumvent both issues by exhibiting a process
+$\indexedabove{\tau}{\returnmeasure}$ that is a \emph{gradient flow} of a
+functional in the 2-Wasserstein space \citep{ambrosio2008gradient}. In
+particular, as long as the functional is $\lambda$ convex in the sense of
+definition \ref{eq:lambda-convex:metric}
+for some $\lambda>0$, we can be assured that
+$\returnmeasure_\tau\to\returnmeasure^\pi$ in the 2-Wasserstein metric
+\citep{Jordan02thevariational, santambrogio2015optimal}, and the generalized
+minizing movements of the \hyperref[s:gradient-flows:wgf]{JKO scheme} will
+provide us with a convergent time-discretized approximation of
+$\indexedabove{\tau}{\returnmeasure}$.
+
+Let $\indexedabove{\tau}{\bellmanoperator}$ denote the
+\hyperref[def:transition-semigroup]{transition semigroup} of the
+\hyperref[def:conditional-backward-return]{conditional backward return process}
+$\indexedabove{t}{\cbrprocess(z)}$.
+By definition, we have
+
+\begin{align*}
+  \bellmanoperator_\tau\proj{2}(x, z) &=
+                                        \ConditionExpect{\proj{2}(X_\tau,
+                                        Z_\tau)}{X_0=x, Z_0 = z}\\
+\end{align*}
+
+Let $\statistics:x\mapsto\mathbf{s}(\returnmeasure(\cdot\mid
+x))\in\mathbf{R}^N$ be a set of statistical functionals such that
+there exists $\Phi:\mathbf{R}^N\to\probset{\returnspace}$ such that
+$\mathbf{s}\circ\Phi=\identity$ and $\Phi(\mathbf{s}) =
+\frac{1}{N}\sum_{i=1}^N\dirac{\mathbf{s}^i}$. Then we can aim to
+learn the return measure by ensuring that
+$|\partialderiv{}{\tau}\returnmeasure_\tau|\to 0$. We can attempt this by
+considering the gradient flow of the following functional,
+
+\begin{equation}
+  \label{eq:w2-functional}
+  \mathscr{F}(\mu_\tau) =
+  \int_{\returnspace}\left\lvert\partialderiv{}{\tau}\cdf[\mu_\tau](x,
+  z)\right\rvert^2d\mu_\tau(z)
+\end{equation}
+
+Note that the loss functional $\mathscr{F}$ of \eqref{eq:w2-functional} is
+minimized when $\partialderiv{}{\tau}\cdf[\mu_\tau](x,\cdot) = 0$, which will correspond
+to the return distribution function estimates converging to stationary points.
+These stationary points may not necessarily be ``optimal" in a meaningful sense,
+since $\mathscr{F}$ may have local minima. Moving forward, we will demonstrate a
+trajectory $\indexedabove{\tau}{\returnmeasure}$ that does indeed have a unique
+fixed point. In order to accomplish this, we must impose the characterization
+of return distribution functions developed in \S\ref{s:characterization} and
+\S\ref{s:representation} on the continuity equation.
+
+\begin{theorem}\label{thm:convergence}
+  Let $\indexedabove{\tau}{\mu},\indexedabove{\tau}{\nu}:\mathbf{R}_+\to\wasserspace$
+  be curves in the space of probability measures. Suppose
+  \begin{align*}
+    \partialderiv{}{\tau}\cdf[\mu_\tau](x, z) &= \mathscr{L}_X\cdf[\mu_\tau](x, z) -
+                                     (r(x) +
+                                     z\log\gamma)\partialderiv{}{z}\cdf[\mu_\tau](x,
+                                     z)\\
+    \partialderiv{}{\tau}\cdf[\nu_\tau](x, z) &= \mathscr{L}_X\cdf[\nu_\tau](x, z) -
+                                     (r(x) +
+                                     z\log\gamma)\partialderiv{}{z}\cdf[\nu_\tau](x,
+                                     z)\\
+  \end{align*}
+
+  Then $\lim_{\tau\to\infty}\wassermetric(\mu_\tau,\nu_\tau) = 0$, and the
+  distance decays exponentially. Moreover, $\lim_{\tau\to\infty}\mu_\tau =
+  \lim_{\tau\to\infty}\nu_\tau$ exists and the limit is unique.
+\end{theorem}
+
+This proof will proceed in a few steps:
+\begin{enumerate}
+  \item\label{thm:convergence:convex} We will show that $\mathscr{F}$ as defined
+    in \eqref{eq:loss-functional} is
+    $\lambda$-convex for a $\lambda>0$;
+  \item\label{thm:convergence:evi} Then we can establish that
+    $(\cdf[\mu_\tau])_{\tau\geq 0}$ and $(\cdf[\nu_\tau])_{\tau\geq 0}$ are gradient
+    flows, in an EVI sense, to a loss functional that approximates
+    $\mathscr{F}$;
+  \item\label{thm:convergence:convergence} Finally, using the properties of EVI
+    gradient flows, we will deduce that the 2-Wasserstein distance between
+    $\mu_\tau,\nu_\tau$
+    decays exponentially in time.
+\end{enumerate}
+
+In order to prove \ref{thm:convergence:convex}, we will begin with the following
+lemma.
+
+\begin{lemma}\label{lem:convex}
+  The function $\mathscr{L}^\star\rvert_{\wasserspace}: \wasserspace\to\returnspace$ defined as
+
+  \begin{equation}
+    \label{eq:lstar}
+    \mathscr{L}^\star\rvert_{\wasserspace}\returnmeasure =
+    \mathscr{L}_X\cdf[\returnmeasure] - (r\circ\proj{1} +
+    \log\gamma\proj{2})\partialderiv{\cdf[\returnmeasure]}{z}
+  \end{equation}
+
+  is convex.
+\end{lemma}
+\begin{proof}
+  To begin, note that
+
+  \begin{align*}
+    \bellmanoperator_\delta\returnmeasure(z\mid x)
+    &= \ConditionExpect{\returnmeasure(\gamma^{-\delta}(z -
+      \overline{G}_\delta)\mid X_\delta)}{X_0=x}\\
+    &=
+      \int_{\mathcal{X}}\int_{\returnspace}\returnmeasure(\gamma^{-\delta}(z
+      - \overline{g})\mid x')\Pr(x', \overline{g}\mid x)\\
+    &=
+      \int_{\mathcal{X}}\int_{\returnspace}\pushforward{f^{\overline{g},
+      \gamma}_{\delta}}{\returnmeasure(\cdot\mid x')}d\Pr(x', \overline{g}\mid x)\\
+  \end{align*}
+  where $\pushforward{f}{\mu} = \mu\circ f^{-1}$ is the
+  \emph{pushforward measure} of $\mu$ through $f$, and
+  $f^{\overline{g}, \gamma}_{\delta}$ is a continuous time extension of
+  the function $f^{r, \gamma}$ introduced in \citet{Rowland48495}
+  defined as
+
+  \begin{align*}
+    f^{\overline{g},\gamma}_{\delta}(z) &= \overline{g} + \gamma^{\delta}z
+  \end{align*}
+
+  Then it follows that
+
+  \begin{align*}
+    \frac{\bellmanoperator_\delta\returnmeasure(z\mid x) -
+    \returnmeasure(z\mid x)}{\delta}
+    &=
+      \frac{1}{\delta}\int_{\mathcal{X}}\int_{\returnspace}\left(\pushforward{f^{\overline{g},
+      \gamma}_{\delta}}{\returnmeasure(\cdot\mid x')} -
+      \returnmeasure(\cdot\mid x)\right)d\Pr(x', \overline{g}\mid x)\\
+  \end{align*}
+
+  On the right side of the equation above, we see that for any
+  $\delta>0$ the mapping
+
+  \begin{align*}
+  \mathsf{B}_\delta:\returnmeasure(z\mid x)\mapsto
+    \frac{1}{\delta}(\bellmanoperator_\delta \returnmeasure(z\mid x) -
+    \returnmeasure(z\mid x))
+  \end{align*}
+
+  is convex. We also know that this mapping converges to
+  $\mathscr{L}^\star\rvert_{\wasserspace}$ in measure from
+  Theorem \ref{thm:dhjb}. Thus, for any $\delta>0$, $\lambda\in
+  [0,1]$, and return measure functions $\returnmeasure_1, \returnmeasure_2$,
+
+  \begin{align*}
+    \mathsf{B}_\delta(\lambda\returnmeasure_1(\cdot\mid x) +
+    (1-\lambda)\returnmeasure_2(\cdot\mid x))
+    &\leq \lambda\mathsf{B}_\delta(\returnmeasure_1(\cdot\mid x)) +
+      (1-\lambda)\mathsf{B}_\delta\returnmeasure_2(\cdot\mid x)\\
+    \therefore \lim_{\delta\to 0}\mathsf{B}_\delta(\lambda\returnmeasure_1(\cdot\mid x) +
+    (1-\lambda)\returnmeasure_2(\cdot\mid x))
+    &\leq \lim_{\delta\to 0}\lambda\mathsf{B}_\delta(\returnmeasure_1(\cdot\mid x)) +
+      \lim_{\delta\to 0}(1-\lambda)\mathsf{B}_\delta\returnmeasure_2(\cdot\mid x)\\
+    \therefore\mathscr{L}^\star\rvert_{\wasserspace}(\lambda\returnmeasure_1(\cdot\mid x) +
+    (1-\lambda)\returnmeasure_2(\cdot\mid x))
+    &\leq
+      \lambda\mathscr{L}^\star\rvert_{\wasserspace}\returnmeasure_1(\cdot\mid x) +
+      (1-\lambda)\mathscr{L}^\star\rvert_{\wasserspace}\returnmeasure_2(\cdot\mid x)
+  \end{align*}
+  This shows that $\mathscr{L}^\star\rvert_{\wasserspace}$ is indeed convex.
+\end{proof}
+
+The purpose of Lemma \ref{lem:convex} is to facilitate the proof that
+$\mathscr{F}$ is a convex functional, which will be shown in the sequel.
+
+\begin{proof}[Proof of Theorem \ref{thm:convergence}]
+  Consider the functional $\mathscr{F}_\beta:\wasserspace\to\mathbf{R}_+$
+  defined as
+
+  \begin{equation}\label{eq:loss-functional}
+    \mathscr{F}_\beta(\returnmeasure) =
+    \int_{\returnspace}\frac{1}{2}\left(\overbrace{\mathscr{L}^\star\rvert_{\wasserspace}
+                                  \returnmeasure(z\mid
+                                  x)}^{\phi(z)}\right)^2\returnmeasure(dz\mid x) 
+                                  +
+                                  \frac{1}{\beta}\overbrace{\int_{\returnspace}-\returnmeasure(z\mid
+                                  x)\log\returnmeasure(z\mid
+                                        x)dz}^{\mathcal{H}(\returnmeasure(\cdot\mid
+    x))}\\
+  \end{equation}
+
+  This functional is known to correspond to an
+  \emph{entropy-regularized} optimal transport cost
+  \citep{cuturi2013sinkhorn}, where the cost function on the underlying space
+  (the space of returns) is determined by $\phi$.
+  Additionally, \eqref{eq:loss-functional} is known
+  \citep{Jordan02thevariational} to be the formulation of the Fokker-Planck
+  equation \eqref{eq:fokker-planck} expressed as an EVI gradient flow in
+  $\wasserspace[2]$ whenever $\phi^2$ is convex \cite{santambrogio2015optimal}. 
+
+  By Lemma \ref{lem:convex} we know that $\phi$ is convex and
+  non-constant. Moreover, the square function $F:x\mapsto x^2$ satisfies
+
+  \begin{align*}
+    x^2 + y^2 &= (x - y)^2 + 2xy\\
+    F(y) &= -F(x) + (x-y)^2 + \nabla F(x)y\\
+              &= F(x) + (x-y)^2 - 2x^2 + \nabla F(x)y\\
+    &= F(x) + \frac{\lambda}{2}(x-y)^2 + \nabla F(x)(y - x) && \lambda
+                                                               = 2
+  \end{align*}
+  So the square function is $\lambda$-convex for $\lambda =2$, and
+  therefore there exists $\lambda > 0$ such that $\phi^2$ is
+  $\lambda$-convex, completing step \ref{thm:convergence:convex} of the proof.
+
+  Since the entropy functional
+  $\mathcal{H}(\returnmeasure(\cdot\mid x))$ is also famously convex,
+  the loss functional $\mathscr{F}_\beta$ is
+  $\lambda$-convex. Consequently, \eqref{eq:loss-functional} satisfies the
+  \hyperref[s:gradient-flows:evi]{EVI$_\lambda$ condition} (see
+  \S\ref{s:gradient-flows:evi}), so it corresponds to
+  an EVI gradient flow due to step \ref{thm:convergence:convex}. This completes the
+  proof of step \ref{thm:convergence:evi}.
+
+  By the contraction property of EVI gradient flows shown in Theorem
+  \ref{thm:convergence:evi}, we have
+  \begin{align*}
+    \frac{d}{d\tau}\wassermetric^2(\mu_\tau, \nu_\tau) &\leq
+    -4\lambda\wassermetric^2(\mu_\tau, \nu_\tau)\\
+  \end{align*}
+
+  Moreover, we see that $\wassermetric^2(\mu_\tau, \nu_\tau) \leq
+  \exp(-4\lambda\wassermetric^2(\mu_0, \nu_0))$. Since $\lambda>0$, we affirm
+  that $\wassermetric(\mu_t, \nu_t)\to 0$ at an exponential rate when
+  $\partialderiv{}{t}{\mu_\tau} = -\nabla\mathscr{F}_\beta(\mu_\tau)$
+  and $\partialderiv{}{t}{\nu_\tau} = -\nabla\mathscr{F}_\beta(\nu_\tau)$ both in the
+  EVI sense. The work of \citet{cuturi2013sinkhorn} shows that the curves
+  $\indexedabove{\tau}{\mu},\indexedabove{\tau}{\nu}$ converge to gradient flows of
+  $\mathscr{F}$ when $\beta\to\infty$, so $\wassermetric(\mu_\tau, \nu_\tau)\to 0$
+  exponentially when $\cdf[\mu_\tau], \cdf[\nu_\tau]$ satisfy the equations
+  stated in the theorem (note that
+  $\mathscr{F}_\beta\overset{\beta\uparrow\infty}{\longrightarrow}\mathscr{F}$
+  pointwise).
+
+  Finally, uniqueness of the gradient flow is confirmed by Gr\"onwall's
+  Lemma \citep{gronwall1919note}. Since $\mathscr{F}_\beta$ is clearly
+  minimized when $\phi\equiv 0$, it follows that the gradient flow
+  converges to the return measure satisfying \eqref{eq:dhjb}, which is
+  $\returnmeasure^\pi$.
+\end{proof}
+
+To summarize, we have shown that the distributional HJB equation \eqref{eq:dhjb}
+can be solved by formulating it as the gradient flow of the limit of functionals
+$\mathscr{F}_\beta$ \eqref{eq:loss-functional} as $\beta\to\infty$. Therefore,
+we can approximate solutions to the distributional HJB equation by solving a
+Fokker-Planck equation \eqref{eq:fokker-planck} with variance parameter
+tending to $0$. The evolution of $\indexedabove{\tau}{\returnmeasure}$ according to
+the EVI gradient flow is understood as the continuous-time analogue to policy
+evaluation, and we showed that the stationary point of this curve is
+$\returnmeasure^\pi$ as intended. However, we have not yet described a method of
+approximate policy evaluation that is realizable on a computer, as this
+description of policy evaluation requires the evolution of $\returnmeasure_\tau$
+to be a continuous-time curve -- in other words, we must compute updates to
+$\returnmeasure_\tau$ continuously in time. In the following section, we will
+bootstrap the results from the analysis of the JKO scheme (see
+\S\ref{s:gradient-flows:wgf}) to derive a time-discretized approximation to
+policy evaluation that converges to $\indexedabove{\tau}{\returnmeasure}$ as the
+time discretization parameter shrinks to zero.
+
+\subsection{Time Discretization}
+While Theorem \ref{thm:convergence} is promising, we are still
+assuming our return measure estimates can evolve continuously in time
+-- this of course cannot be the case for any imaginable algorithm. It
+may be tempting to apply a gradient-descent-like algorithm to minimize
+$\mathscr{F}_\beta$, however this can be too crude -- after all, the
+space of return measures is highly non-Euclidean, so updating a return
+measure with a Euclidean gradient step likely will not result in
+another return measure.
+
+Thankfully, $\wasserspace$ is a convex set, and therefore we can
+consider applying a \emph{proximal} gradient optimization routine
+\citep{rockafellar2015convex}. In particular, such proximal gradient
+algorithms have been studied specifically in $\wasserspace$
+\citep{Santambrogio2016EuclideanMA, salim2020wasserstein}, \emph{and}
+for the optimization of a generalization of $\mathscr{F}_\beta$
+\citep{Jordan02thevariational, villani2008optimal,
+  Santambrogio2016EuclideanMA, chizat2018global, Zhang2018PolicyOA,
+  martin2020stochastically}. 
+
+The proximal gradient scheme that we are interested in, known as a
+\emph{generalized minimizing movements} scheme \citep{de1993new}, has the
+following form,
+
+\begin{equation}
+  \label{eq:proximal-gradient}
+  \returnmeasure^\delta_{k+1}\in\arg\min_{\returnmeasure\in\wasserspace}\left[\mathscr{F}_\beta(\returnmeasure)
+    + \frac{1}{2\delta}\wassermetric^2(\returnmeasure, \returnmeasure^\delta_k)\right]
+\end{equation}
+
+where $\delta>0$ is the time discretization length and
+$\returnmeasure^\delta_{k}$ is the discrete-time approximation of a
+return measure at time $t = k\delta$ for
+$k\in\mathbf{N}$. \citet{Jordan02thevariational} presents an
+interpolation of this scheme that converges to the gradient flow as
+$\delta\to 0$. The proof relies heavily on the geometry of
+$\wasserspace$ -- in particular, it is crucial that $\wasserspace$ is
+a \emph{geodesic space} \citep{villani2008optimal,
+  ambrosio2008gradient}. This means that the 2-Wasserstein distance
+between any two points in $\wasserspace$ is equal to the minimum among
+the lengths of all curves between these points\footnote{It is
+  imperative that this minimum exists, which is the case in
+  $\wasserspace$ \citep{villani2008optimal}.} measured with respect to
+the metric derivative. These minimizing curves are called
+\emph{geodesics}, and geodesics are known to have constant speed (up
+to time reparameterization) \citep{santambrogio2015optimal}. To
+interpolate the curve $\indexedabove{\tau}{\returnmeasure^\delta}$ as
+suggested by \citet{Jordan02thevariational}, we simply connect
+consecutive points $\returnmeasure^\delta_k,
+\returnmeasure^\delta_{k+1}$ by the constant speed geodesic between
+them, resulting in
+
+\begin{equation}
+  \label{eq:time-discretization:pushforward}
+  \returnmeasure^{\delta}_{k\delta + s} = \pushforward{\left(\frac{\delta -
+        s}{\delta}\identity +
+      \frac{s}{\delta}f^{\overline{g},\gamma}_\delta\right)}{\returnmeasure^\delta_{k\delta}}
+  = \pushforward{\left(\identity + s\frac{f^{\overline{g}, \gamma}_\delta -
+  \identity}{\delta}\right)}{\returnmeasure^{\delta}_{k\delta}}
+\end{equation}
+
+for $s\in(0,\delta)$. This is illustrated in Figure \ref{fig:spacetime}.
+
+\begin{figure}[h]
+  \centering
+  \vspace{-1.5cm}
+  \includegraphics[scale=2]{graphics/discretized-trajectory.pdf}
+  \vspace{-1.5cm}
+  \caption{Trajectory of the return distribution in
+    $\wasserspace$}\label{fig:spacetime}
+  \footnotesize
+  The blue curve depicts the trajectory of the return distribution in
+  $\mathbf{W}_2$. The piecewise linear curve (shown in black) with
+  vertices along the trajectory illustrates how we discretize and
+  interpolate the trajectory in time.
+\end{figure}
+
+Equation \eqref{eq:time-discretization:pushforward} can be interpreted
+by imagining $\returnmeasure$ as a collection of particles moving
+along constant speed (geodesic) paths, and the velocity of a
+particle $z$ is $\delta^{-1}(f_\delta^{\overline{g},\gamma}(z) -
+z)$. By Theorem \ref{thm:convergence}, the particle velocity converges
+so as to satisfy the distributional HJB equation
+\eqref{eq:dhjb} as $\delta\to 0$.
+
+As shown in \citet{Jordan02thevariational}, the time-discretized sequence
+$\indexedint{k}{\infty}{\returnmeasure^\delta}$ defined by
+\eqref{eq:time-discretization:pushforward} converges to the desired
+$\indexedabove{\tau}{\returnmeasure}$ as $\delta\to 0$. Thus, we can think of
+the operators $\bellmanoperator_\delta$ as distributional Bellman operators that
+can be used to approximate continuous-time policy evaluation iteratively. Note
+that this scheme will converge even as difference in time between successive
+iterates of the return distribution function tends to $0$ (for instance if the
+parameter $\tau$ of $\indexedabove{\tau}{\returnmeasure}$ is equivalent to the
+flow of time in an episode rollout), so we can use this
+scheme to approximately compute distributional Bellman updates continuously in time.
+
+\section{Optimal Control}\label{s:control}
+So far, we have only discussed how we can learn to \emph{evaluate} a
+policy, but not how to \emph{improve} a policy to discover a good
+one. Unfortunately, even in discrete time, there is no known
+distributional RL algorithm that converges to an optimal policy
+\citep{Bellemare2017ADP}. On the bright side, in discrete time, there
+exists a policy optimization scheme for which the \emph{mean} of the
+return distributions converges to the mean return.
+
+Despite this gloomy result, existing distributional RL algorithms
+perform ``greedy'' temporal difference learning in a manner similar to
+Q-Learning. For instance, let $\Pi^\star$ denote the set of optimal
+policies, defined according to,
+
+\begin{align*}
+  \Pi^\star &= \left\{\pi^\star\in\Pi : \forall x,\ V^{\pi^\star}(x)\geq\sup_\pi V^\pi(x)\right\}
+\end{align*}
+
+where $\pi$ is the set of admissible policies and
+$V^\pi:\mathcal{X}\to\returnspace$ is the value function corresponding
+to the policy $\pi$. The general approach to distributional optimal
+control involves performing updates to minimize $d(\returnmeasure,
+\returnmeasure^{\pi^\star})$ for estimates of
+$\pi^\star\in\Pi^\star)$ in some metric\footnote{In practice, some
+  algorithms use functions $d$ that are not true metrics, like
+  $f$-divergences for example.} $d$. It isn't entirely surprising that only the
+means of the return measures converge, since the optimality condition
+is defined solely in terms of that statistic. However, there is no
+clear general alternative for comparing probability measures.
+
+The work of \citet{dabney2018implicit} proposes an alternative
+ordering based on \emph{distortion risk measures}. In their IQN
+algorithm, return measures are represented as quantile functions, and
+they are compared by the mean of the return measure convolved by a
+function that effectively weighs its quantiles. The function can be
+tuned in such a way that optimal policies are more risk-averse or
+risk-seeking, however there is still no guarantee of the convergence to
+an optimal return distribution.
+
+\section{Summary}
+In this chapter, we discussed approximation schemes that can be used
+to perform tractable approximate policy evaluation in a convergent
+manner. In particular, Corollary \ref{cor:shjb} demonstrates a simple
+method of representing return measures in finite space, and equations
+\eqref{eq:proximal-gradient} and
+\eqref{eq:time-discretization:pushforward} describe a discrete-time
+scheme that converges to a particular gradient flow. Theorem
+\ref{thm:convergence} shows that this gradient flow has a unique
+stationary point, which is satisfied by the ground truth return
+measure function. We have yet to study a concrete distributional RL
+algorithm, however. The following chapter presents a framework for
+designing distributional RL algorithms based on the tools from this section.

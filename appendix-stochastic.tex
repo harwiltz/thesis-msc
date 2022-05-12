@@ -1,0 +1,179 @@
+\chapter{Tools from the Theory of Stochastic Processes}\label{app:stochastic}
+This appendix will survey some concepts from the theory of stochastic processes
+that are useful in the developments of this thesis. This theory tends to be
+quite technical, and one should be comfortable with the concepts of Appendices
+\ref{app:analysis} and \ref{app:measure} before proceeding.
+
+\section{Some Special Classes of Stochastic Processes}
+\subsection{Measurable, Adapted, and Progressive Processes}\label{app:adapted}
+When dealing with stochastic processes, there are a few properties that we
+generally desire in order for us to be able to analyze them nicely. The most
+common examples will be summarized here. These definitions are due to
+\citet{le2016brownian}.
+
+For the following definitions, we will fix a
+\hyperref[def:probability-space]{probability space} $(\Omega, \mathcal{F},
+\Pr)$, and we will consider a stochastic process
+$\indexedabove{t}{X}\subset\mathcal{X}$, where $(\mathcal{X}, \Sigma)$ is a
+\hyperref[def:measurable-space]{measurable space}..
+
+\begin{definition}[Measurable Process]\label{def:process:measurable}
+  The process
+  $\indexedabove{t}{X}\subset \mathcal{X}$
+  is said to be
+  \emph{measurable} if $(\omega, t)\mapsto X_t(\omega)$ is a measurable map on
+  $\Omega\times\mathbf{R}_+$ with respect to the smallest $\sigma$-algebra on
+  $\mathscr{B}(\mathbf{R}_+)\times\mathcal{F}$.
+\end{definition}
+
+For the remainder of the definitions, we will also consider a
+\hyperref[def:filtration]{filtration} (see Definition \ref{def:filtration})
+$\indexedabove{t}{\mathcal{F}}$ making $(\Omega, \mathcal{F},
+\indexedabove{t}{\mathcal{F}},\Pr)$ a filtered probability space.
+
+\begin{definition}[Adapted Process]\label{def:process:adapted}
+  The process $\indexedabove{t}{X}\subset\mathcal{X}$ is \emph{adapted} if $X_t$
+  is $\mathcal{F}_t$-measurable for every $t\geq 0$.
+\end{definition}
+
+\begin{definition}[Progressive Process]\label{def:process:progressive}
+  The process $\indexedabove{t}{X}\subset\mathcal{X}$ is \emph{progressive}
+  (or \emph{progressively measurable}) if $(\omega, s)\mapsto X_t(\omega)$ is
+  measurable on $\Omega\times[0,t]$ with respect to the smallest
+  $\sigma$-algebra on $\mathcal{F}_t\times\mathscr{B}([0,t])$ for each $t\geq
+  0$.
+\end{definition}
+
+\subsection{Martingales}\label{app:martingale}
+\begin{definition}[Martingales, \cite{rogers1994diffusions}]
+  \label{def:martingale}
+  A \textbf{martingale} (relative to a given
+  \hyperref[def:filtration]{filtration} $(\mathcal{F}_t)_{t\geq 0}$)
+  is a stochastic process $(M_t)_{t\geq 0}$ where 
+  $M_t\in L^1$ and
+  \begin{equation}
+    \label{eq:martingale:property}
+    M_s = \ConditionExpect{M_t}{\mathcal{F}_s}\qquad 0\leq s \leq t
+  \end{equation}
+
+  Equation \eqref{eq:martingale:property} is referred to as ``the
+  martingale property''. If the equality in
+  \eqref{eq:martingale:property} is instead $\geq$ (resp. $\leq$), $(M_t)_{t\geq 0}$
+  is called a \textbf{supermartingale} (resp. \textbf{submartingale}).
+\end{definition}
+
+\begin{definition}[Local Martingales, \cite{le2016brownian}]
+  \label{def:local-martingale}
+  A \textbf{local martingale} is a stochastic process $(M_t)_{t\geq
+    0}$ for which there exists a sequence of nondecreasing
+  \hyperref[def:stopping-time]{stopping times} $(T_n)_{n=1}^\infty$
+  such that $M^{T_n} = (M_{t\land T_n})_{t\geq 0}\in L^1$ is a martingale.
+\end{definition}
+
+\begin{definition}[Semimartingales, \cite{le2016brownian}]\label{def:semimartingale}
+  \label{def:semimartingale}
+  A \textbf{semimartingale} is a random process $(X_t)_{t\geq 0}$ such
+  that $X_t = A_t + M_t$ for each $t\geq 0$, where $(A_t)_{t\geq 0}$
+  is a \hyperref[app:finite-variation]{finite variation process} and
+  $(M_t)_{t\geq 0}$ is a local martingale.
+\end{definition}
+
+\subsection{Finite Variation Processes}\label{app:finite-variation}
+\begin{definition}[Finite Variation Function, \cite{le2016brownian}]
+  Let $T\geq 0$. A continuous function $a : [0,T]\to\mathbf{R}$ with
+  $a(0) = 0$ is said to have \textbf{finite variation} if there exists
+  a signed measure $\mu$ on $[0,T]$ such that $a(t) = \mu([0,t])$ for
+  any $t\in [0,T]$.
+\end{definition}
+
+A finite variation process is a process whose regularity is given by
+finite variation sample paths, as formalized in the next definition.
+
+\begin{definition}[Finite Variation Process, \cite{le2016brownian}]
+  A process $(A_t)_{t\geq 0}$ is called a \textbf{finite variation
+    process} if all of its sample paths are finite variation functions
+  on $\mathbf{R}_+$.
+\end{definition}
+
+The following processes generalize the notion of covariance of random variables
+to stochastic processes, and appear frequently in important stochastic calculus
+theorems. Their definitions are given by \citet{le2016brownian}.
+
+\begin{definition}[Quadratic Variation]\label{def:quadratic-variation}
+  Let $\indexedabove{t}{M}$ be a \hyperref[def:local-martingale]{local
+  martingale}. The \emph{quadratic variation} of $\indexedabove{t}{M}$,
+  denoted $\indexedabove{t}{[M,M]}$, is the unique increasing process such
+  that $(M^2_t - [M,M]_t)_{t\geq 0}$ is a local martingale.
+\end{definition}
+
+\begin{remark}
+  The existence and uniqueness of the quadratic variation is shown by
+  \citet[Theorem 4.9]{le2016brownian}.
+\end{remark}
+
+\begin{definition}[The Bracket of Local Martingales]\label{def:bracket}
+  Let $\indexedabove{t}{M},\indexedabove{t}{N}$ be local martingales. The
+  \emph{bracket} of $M,N$, denoted $\indexedabove{t}{[M,N]}$ is the finite
+  variation process $\indexedabove{t}{[M,N]}$ given by
+  \begin{align*}
+    [M,N]_t &= \frac{1}{2}\bigg([M+N,M+N]_t - [M,M]_t - [N,N]_t\bigg)
+  \end{align*}
+\end{definition}
+
+\section{\Ito's Lemma}
+\Ito's Lemma is a very powerful tool in the analysis of stochastic
+processes. It can be thought of as a stochastic analog to Taylor's theorem.
+
+\begin{theorem}[\Ito's Lemma, \cite{le2016brownian}]\label{app:ito}
+  Let $(X^i)_{i=1}^p$ be real valued
+  \hyperref[def:semimartingale]{semimartingales} and let $f\in
+  C^2(\mathbf{R})$. Let $\mathbf{X}_t = (X_t^1,\dots,X_t^p)$. Then, for every $t\geq 0$,
+
+  \begin{equation}
+    \begin{aligned}
+    \label{eq:ito}
+    f(\mathbf{X}_t) = f(\mathbf{X}_0) +
+    \sum_{i=1}^p\int_0^t\partialderiv{f}{x^i}(\mathbf{X}_s)dX_s^i +
+    \frac{1}{2}\sum_{i=1}^p\sum_{j=1}^p\int_0^t\frac{\partial^2f}{\partial
+      x_i\partial x_j}(\mathbf{X}_s)d[X^i, X^j]_s
+    \end{aligned}
+  \end{equation}
+\end{theorem}
+
+\section{The Feynman-Kac Formula}\label{app:feynman-kac}
+We make use of the following formulation of the \emph{Feynman-Kac
+  formula}, as illustrated in \citet[Exercise 6.26]{le2016brownian}.
+
+\begin{theorem}\label{thm:feynman-kac}
+  Let $\indexedabove{t}{X}$ be a
+  \hyperref[def:fd]{Feller-Dynkin} process in a space $\mathcal{X}$
+  and let $v\in C_0(\mathcal{X})$. Define for any $x\in\mathcal{X}$
+  and $\phi$ a bounded and measurable function over $\mathcal{X}$ the
+  transition semigroup $\indexedabove{t}{Q^\star}$ where
+
+  \begin{align*}
+    Q_t^\star\phi(x) &= \ConditionExpect{\phi(X_t)\exp\left(-\int_0^tv(X_s)ds\right)}{X_0=x}
+  \end{align*}
+
+  If $\indexedabove{t}{X}$ admits an infinitesimal generator
+  $\mathscr{L}$ and $\phi\in\mathcal{D}({\mathscr{L}})$, then
+
+  \begin{equation}
+    \label{eq:feynman-kac:generator}
+    \frac{d}{dt}Q_t^\star\phi\rvert_{t=0} = \mathscr{L}\phi - v\otimes\phi
+  \end{equation}
+\end{theorem}
+
+\begin{remark}
+  The Feynman-Kac formula can be seen as the
+  \hyperref[thm:kbe]{Kolmogorov Backward Equation} with an
+  ``integrating factor''. Effectively, the Feynman-Kac formula
+  allows us to identify solutions of PDEs of the form
+
+  \begin{align*}
+    \partialderiv{u}{t} &= - \mathscr{L}u + v\otimes\phi
+  \end{align*}
+
+  with conditional expectations of diffusion processes.
+\end{remark}
+

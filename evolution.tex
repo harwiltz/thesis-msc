@@ -1,0 +1,876 @@
+\chapter{Evolution of Return Distributions}\label{c:evolution}
+We will now shift our focus to formally representing the return
+distribution function for an RL agent evolving continuously in time
+with a fixed behavioral policy. In order to do so, it will be
+necessary to impose some structural and regularity properties on the
+dynamics of the environment and on the return distributions. More concretely,
+the chapter is structured as follows,
+
+\begin{itemize}
+  \item A formalism of \textbf{continuous-time Markov processes} will be given;
+  \item The \textbf{random return} is formulated as a \textbf{special type of
+    Markovian process} in \S\ref{s:truncated-returns};
+  \item A \textbf{distributional analogue to the HJB equation} (see
+    equation \eqref{eq:hjb:stochastic}) is derived in \S\ref{s:characterization}.
+\end{itemize}
+
+In order to model stochastic trajectories in continuous time, we will use the
+language of stochastic processes and stochastic differential equations as
+discussed in \S\ref{s:stochastic-processes} and Appendix \ref{app:stochastic}.
+Moreover, we must discuss what it means for a continuous-time process to be
+Markovian.
+
+\begin{definition}[Markov Process,
+  \cite{rogers1994diffusions}]\label{def:transition-semigroup}
+  Let $(X_t)_{t\geq 0}$ be a stochastic process in the
+  \hyperref[def:filtration]{filtered probability space} $(\Omega,
+  \mathcal{F}, (\mathcal{F}_t)_{t\geq 0}, \Pr)$. A \emph{Markovian
+    transition kernel} is a kernel with a continuous parameter $t$,
+  $P_t:\Omega\times\mathcal{F}\to[0,1]$, such that for any bounded
+  $\mathcal{F}$-measurable function $f$, we have
+
+  \begin{equation}\label{eq:markov-kernel}
+    (P_tf)(X_s) = \ConditionExpect{f(X_{s+t})}{\mathcal{F}_s}\qquad
+                                                                  \Pr-\text{almost surely}
+  \end{equation}
+
+  A collection $(P_t)_{t\geq 0}$ of Markovian transition kernels is called a
+  \emph{transition semigroup}\footnote{This name emphasizes
+    the semigroup nature of the collection of transition kernels. In
+    the abstract algebra literature, a semigroup is a set of objects that is
+  closed under an associative binary operation.} when
+  \begin{enumerate}
+  \item For each $t\geq 0$ and $x\in\Omega$, $P_t(x,\cdot)$ is a
+    measure on $\mathcal{F}$ and $P_t(x,\Omega)\leq 1$;
+  \item For each $t\geq 0$ and $\Gamma\in\mathcal{F}$, the mapping
+    $P_t(\cdot,\Gamma)$ is $\mathcal{F}$-measurable; and
+  \item (The Chapman-Kolmogorov Identity) For each $s,t\geq 0$,each
+    $x\in\Omega$, and each $\Gamma\in\mathcal{F}$, the collection
+    satisfies
+
+    \begin{align*}
+    P_{s+t}(x,
+    \Gamma) = \int_\Omega P_s(x, dy)P_t(y, \Gamma)
+    \end{align*}
+  \end{enumerate}
+  Then $P_tP_s = P_{t+s}$, so $\indexedabove{t}{P}$ is indeed a semigroup.
+
+  A \emph{Markov process} is a stochastic process $\indexedabove{t}{X}$ together
+  with a transition semigroup $\indexedabove{t}{P}$ such that
+  \eqref{eq:markov-kernel} holds.
+\end{definition}
+
+Beyond the Markovian property, we will further require that the trajectory of
+the agent is ``regular enough" for us to study its instantaneous dynamics. In
+particular, we will assume henceforth that the trajectory of the agent is a
+\emph{Feller-Dynkin} process.
+
+\begin{definition}[Feller-Dynkin Process, Infinitesimal Generator,
+  \cite{rogers1994diffusions}]\label{def:fd}
+  Consider a filtered probability space $(\Omega, \mathcal{F},
+  (\mathcal{F}_t)_{t\geq 0}, \Pr)$ and let $\mathcal{X}$ be a Polish\footnote{A
+    Polish space is a \hyperref[def:complete]{complete}
+    \hyperref[def:metric-space]{metric space} that has a countable, dense
+    subset.} space. A transition semigroup
+  $(P_t)_{t\geq 0}$ is said to be a \emph{Feller semigroup} if
+  \begin{enumerate}
+  \item $P_t : C_0(\mathcal{X})\to C_0(\mathcal{X})$ for each
+    $t\in\mathbf{R}_+$;
+  \item For any $f\in C_0(\mathcal{X})$ with $f\leq 1$, $P_tf\in[0,1]$;
+  \item $P_sP_t = P_{s+t}$ and $P_0=\identity$;
+  \item For any $f\in C_0(\mathcal{X})$, we have
+    $\|P_tf-f\|\overset{t\downarrow 0}{\longrightarrow} 0$.
+  \end{enumerate}
+
+  A Markov process with a Feller semigroup is called a
+  \emph{Feller-Dynkin process}.
+
+  Define the set $\mathscr{D}(\mathscr{L})$ according to
+
+  \begin{align*}
+    \mathscr{D}(\mathscr{L}) &= \left\{\Conditional{f\in
+                               C_0(\mathcal{X})}{\exists g\in
+                               C_0(\mathcal{X})\quad\text{\small such that}\quad \|\delta^{-1}(P_\delta - f)
+                               - g\|\overset{\delta\downarrow
+                               0}{\longrightarrow} 0}\right\}
+  \end{align*}
+
+  The \emph{infinitesimal generator} of a Feller-Dynkin process is the
+  operator $\mathscr{L}:\mathscr{D}(\mathscr{L})\to C_0(E)$ where
+
+  \begin{align*}
+    \mathscr{L}f = \lim_{\delta\to 0}\frac{P_\delta f - f}{\delta}
+  \end{align*}
+
+  and $\mathscr{D}(\mathscr{L})$ is called the \emph{domain of the
+    infinitesimal generator} $\mathscr{L}$.
+\end{definition}
+
+\begin{remark}
+  Note that \hyperref[def:ito-diffusion]{\Ito\ diffusions} with
+  Lipschitz-continuous coefficients are Feller-Dynkin processes
+  \citep{le2016brownian}.
+\end{remark}
+
+We consider a continuous-time MDP $(\mathcal{X}, \mathcal{A}, r,
+(P_t), \gamma)$ where $\mathcal{X}\subset\mathbf{R}^d$ is compact,
+$(P_t)$ is a Feller semigroup with infinitesimal generator
+$\mathscr{L}$, $r: \mathcal{X}\to\rewardspace\subset\mathbf{R}$, and
+$\gamma\in(0,1)$. Additionally, we impose a mild assumption on the reward
+function.
+
+\begin{assumption}\label{ass:method:bounded-rewards}
+  The range $\rewardspace$ of $r$ is contained in an
+  interval $[R_{\min}, R_{\max}]$, where $|R_{\min}|,|R_{\max}| <\infty$.
+\end{assumption}
+
+When assumption \ref{ass:method:bounded-rewards} is satisfied, we make
+the following observations regarding the extrema of the return,
+
+\begin{equation*}
+  \begin{aligned}
+    \returnfunction(x) &= \Conditional{\int_0^\infty\gamma^tr(X_t)dt}{X_0 = x}\\
+    V_{\min}\triangleq\inf \returnfunction(x)&\geq\int_0^\infty\gamma^tR_{\min}dt\\
+    &= \frac{1}{\log\frac{1}{\gamma}}R_{\min}\\
+    V_{\max}\triangleq\sup \returnfunction(x)&\leq\int_0^\infty\gamma^tR_{\max}dt\\
+    &= \frac{1}{\log\frac{1}{\gamma}}R_{\max}\\
+  \end{aligned}
+\end{equation*}
+
+This confirms that the discounted return will be bounded. We refer to
+the set $\mathcal{R} = [V_{\min}, V_{\max}]$ as the \emph{return
+  space}.
+
+In order to give a formal treatment of the stochastic processes
+generated by the agent interacting with its environment, we must
+specify a \hyperref[def:filtration]{filtration}.
+In particular, we will be interested for the most part in
+the \label{def:canonical-filtration}\textbf{canonical filtration}. The
+canonical filtration is the filtration $\indexedabove{t}{\mathcal{F}}$
+where $\mathcal{F}_t$ is the sub-$\sigma$-algebra generated by the
+trajectory observed up to time $t$. Naturally,
+$\mathcal{F}_t\subset\mathcal{F}_{t+\delta}$ for any $\delta>0$.
+
+We will perform analysis of the continuous-time MDP on a filtered
+probability space \label{def:probability-space}$\mathsf{P} = (\Omega,
+\mathcal{F}, (\mathcal{F}_t), \Pr)$, where 
+\begin{itemize}
+\item $\Omega \subset
+  \cup_{n\geq 0}(\mathbf{R}_+\times\mathcal{X}\times\mathcal{A}\times\rewardspace)^n$ is
+  the sample space of trajectories in the MDP;
+\item $\mathcal{F}$ is a $\sigma$-algebra over $\Omega$;
+\item $\indexedabove{t}{\mathcal{F}}$ is the canonical filtration.
+\end{itemize}
+
+We denote by $\returnmeasure^\pi:\mathcal{X}\to\probset{\mathcal{A}}$ the
+\emph{return distribution function}, which is defined via
+
+\begin{align*}
+  \law{G^\pi_x} &= \returnmeasure^\pi(\cdot\mid x),
+\end{align*}
+
+where $G^\pi_x$ is the random variable representing the discounted return
+obtained by an agent starting at state $x\in \mathcal{X}$ and following a policy
+$\pi$. The objects $\returnmeasure^\pi(\cdot\mid x)$ are understood as
+\hyperref[def:probability]{probability measures}. We will also require some
+assumptions on the regularity of the return distribution function, which are
+stated below.
+
+\begin{assumption}
+  \label{ass:method:density}
+  At every state $x\in\mathcal{X}$, the return distribution
+  $\returnmeasure^\pi(\cdot\mid x)$ is absolutely continuous (as a measure over
+  the return space) with respect to the
+  Lebesgue measure.
+\end{assumption}
+\begin{assumption}
+  \label{ass:method:c2}
+  The return distribution function is twice differentiable over
+  $\mathcal{X}\times\mathcal{R}$ almost everywhere, and its second
+  partial derivatives are continuous almost everywhere.
+\end{assumption}
+
+Furthermore, we will occasionally want to analyze some less abstract Markov
+processes. In these cases, we will refer to the following assumption.
+
+\begin{assumption}[Diffusion dynamics]
+  \label{ass:method:ito-diffusion}
+  The Markov process $\indexedabove{t}{X}\subset\mathcal{X}\subset\mathbf{R}^d$
+  induced by the agent
+  following a fixed (stochastic) policy $\pi$ is an
+  \hyperref[def:ito-diffusion]{\Ito\ diffusion} evolving
+  according to
+
+  \begin{equation}
+    \label{eq:method:ito-diffusion}
+    dX_t = f_\pi(X_t)dt + \pmb{\sigma}_\pi(X_t)dB_t
+  \end{equation}
+  where $f_\pi:\mathcal{X}\to\mathcal{X}$,
+  $\pmb{\sigma}_\pi:\mathcal{X}\to\mathbf{R}^{d\times d}$ are
+  Lipschitz-continuous, 
+  $\pmb{\sigma}_\pi$ is positive semidefinite, and $B_t$ is a
+  Brownian motion.
+\end{assumption}
+
+\section{The Stochastic Process of Truncated Returns}\label{s:truncated-returns}
+We would like to understand how estimates of the random return should
+evolve over time. Unfortunately, a function mapping states to (random)
+returns cannot be progressively measurable, as it requires knowledge
+of an entire trajectory to be computed. Therefore, we will not be able
+to study random returns directly with the machinery of stochastic
+calculus. Instead, we'll introduce another stochastic process as a
+``gateway'' to the random return.
+
+\begin{definition}[The Truncated Return Process]\label{def:truncated-return}
+  Let $(\mathcal{X},\mathcal{A},r,(P_t),\gamma)$ be a continuous-time
+  MDP. The \emph{truncated return process} is a stochastic process
+  $(J_t)_{t\geq 0}\in\mathcal{X}\times\mathcal{R}$ given by
+
+  \begin{equation*}
+    \begin{aligned}
+      J_t = (X_t, \overline{G}_t)\qquad\overline{G}_t = \int_0^t\gamma^sr(X_s)ds
+    \end{aligned}
+  \end{equation*}
+
+  The values $\overline{G}_t$ are simply the discounted rewards
+  accumulated up to time $t$, and $\overline{G}_0\equiv 0$.
+\end{definition}
+
+\begin{proposition}\label{pro:markov}
+  The truncated return process $(J_t)_{t\geq 0}$ is a Markov process
+  with respect to \hyperref[def:canonical-filtration]{the canonical filtration}.
+\end{proposition}
+\begin{proof}
+  Let $\psi\in C(\mathcal{X}\times\mathcal{R};\mathbf{R})$ and $h>0$. As usual,
+  we denote the canonical filtration by $(\mathcal{F}_t)_{t\geq 0}$.
+  By the definition of the truncated return process,
+
+  \begin{equation*}
+    \begin{aligned}
+      \ConditionExpect{\psi(J_{t+h})}{\mathcal{F}_t} &=
+      \ConditionExpect{\psi(X_{t+h}, \overline{G}_{t+h})}{\mathcal{F}_t}\\
+      &= \ConditionExpect{\psi\left(X_{t+h}, \overline{G}_t + \int_t^{t+h}\gamma^sr(X_s)ds\right)}{\mathcal{F}_t}\\
+      &= \ConditionExpect{\psi\left(X_{t+h}, \overline{G}_t + \int_t^{t+h}\gamma^sr(X_s)ds\right)}{J_t}\\
+    \end{aligned}
+  \end{equation*}
+
+  where the final step holds since the process $(X_t)_{t\geq 0}$ is
+  assumed to be Markovian. Thus, we've shown that for any $\psi\in
+  C(\mathcal{X}\times\mathcal{R};\mathbf{R})$, there exists a function
+  $m:\mathcal{X}\times\mathcal{R}\to\mathbf{R}$ where
+
+  \begin{equation*}
+    \ConditionExpect{\psi(J_{t+h})}{\mathcal{F}_t} = m(X_t, \overline{G}_t)
+  \end{equation*}
+
+  Therefore, the process $(J_t)_{t\geq 0}$ is Markovian.
+\end{proof}
+
+It will be helpful to think of the random return in terms of the
+truncated return process. To do so, we'll need to formalize the
+concept of a trajectory terminating at a non-deterministic time.
+
+\begin{definition}[Stopping time, \citep{le2016brownian}]\label{def:stopping-time}
+  Let $(\Omega, \mathcal{F}, (\mathcal{F}_t))$ be a measurable space
+  with \hyperref[def:filtration]{filtration} $(\mathcal{F}_t)$. A random variable
+  $T:\Omega\to\mathbf{R}_+$ is called a \emph{stopping time} with
+  respect to the filtration $(\mathcal{F}_t)$ if
+  \begin{equation*}
+    \{T\leq t\} \in\mathcal{F}_t\qquad t\geq 0
+  \end{equation*}
+
+  We define the \emph{$\sigma$-algebra of the past before $T$} as the
+  $\sigma$-algebra $\mathcal{F}_T$ given by
+
+  \begin{equation*}
+    \mathcal{F}_T = \left\{A\in\mathcal{F}_\infty : A\cap\{T\leq t\}\in\mathcal{F}_t\right\}
+  \end{equation*}
+\end{definition}
+
+Since trajectories are assumed to be Markovian, it is natural to
+expect their termination to occur once the agent has reached a state
+from some set of \textit{terminating states}. 
+
+\begin{assumption}[Terminating states]\label{ass:termination-set}
+  The continuous-time MDP $(\mathcal{X}, \mathcal{A}, r, \indexedabove{t}{P},
+  \gamma)$ admits a measurable set $\mathcal{G}\subset \mathcal{X}$, referred to as the
+  \emph{terminating states}, such that trajectories terminate when the agent
+  reaches any state $x\in \mathcal{G}$.
+\end{assumption}
+
+We will confirm that the random termination time corresponding to the first
+entry of $\indexedabove{t}{X}$ into $\mathcal{G}$ is a stopping time.
+
+\begin{proposition}\label{pro:stopping-time}
+  Consider a \hyperref[def:filtration]{filtered probability space} $(\Omega, \mathcal{F},
+  \Pr)$. Let $T$ denote the first time that an agent enters a state among a
+  fixed measurable set of terminating states $\mathcal{G}$, so
+  \begin{equation*}
+    T = \inf_{t\geq 0}\{X_t \in\mathcal{G}\}
+  \end{equation*}
+  Then if $\mu(T <\infty) = 1$, $T$ is a stopping time with respect to
+  \hyperref[def:canonical-filtration]{the canonical filtration}.
+\end{proposition}
+\begin{proof}
+  The proof is simple. For any $\epsilon>0$, there exists
+  $t'\in\mathbf{R}$ such that $\Pr(T> t')\leq\epsilon$. Thus,
+  with probability at least $1-\epsilon$, $T$ lies in the compact set
+  $[0,t']$. Therefore, the function $t\mapsto
+  t\indicator{X_t\in\mathcal{G}}$ almost surely attains its
+  infimum. Since the characteristic function
+  $\omega\mapsto\characteristic{\mathcal{G}}(X_t(\omega)) =
+  \indicator{X_t(\omega)\in\mathcal{G}}$ is
+  $\mathcal{F}_t$-measurable, it follows that
+  $\inf_{t\geq 0}\{T\leq t\}\in\mathcal{F}_t$, so $T$ is a
+  stopping time.
+\end{proof}
+
+In the remainder of the thesis, we will be interested in the random
+(discounted) return $G_x^\pi$ starting at a state
+$x\in\mathcal{X}$ and following the policy $\pi$. $G_x^\pi$ is a
+random variable due to the fact that the state transitions are
+random. We define it as follows,
+
+\begin{equation}
+  \label{eq:random-return}
+  G_x^\pi = \Conditional{\int_0^T\gamma^tr(X_t)dt}{X_0 = x}
+\end{equation}
+
+It's clear that
+
+\begin{equation*}
+  \begin{aligned}
+    \Conditional{\overline{G}_T \eqlaw G_x^\pi}{X_0=x}
+  \end{aligned}
+\end{equation*}
+
+The reason for studying the process $(\overline{G}_t)_{t\geq 0}$ as opposed to $G_x^\pi$ is
+that $(\overline{G}_t)_{t\geq 0}$ is adapted to the canonical
+filtration, whereas $G_x^\pi$ is only measurable with respect to $\mathcal{F}_\infty$.
+
+In temporal difference learning, we perform approximate dynamic
+programming to solve the Bellman equation by using the difference
+between the value function at a given state and the estimated value
+bootstrapped by the value function at the next state as a learning
+signal. However, in continuous time, the notion of a ``next state'' is
+meaningless. Instead, we study the rate of change of the value
+function and approximately solve the resulting PDE. This leaves
+another glaring question though: how should one measure or interpret
+the rate of change of a noisy (stochastic) signal? To answer this, we
+must first introduce some regularity conditions on the dynamics of the
+stochastic processes in question.
+
+The following theorem, due to \citet{kolmogoroff1931analytischen}, will be
+instrumental in the sequel. A proof is given for clarity.
+
+\begin{theorem}[Kolmogorov Backward Equation]\label{thm:kbe}
+  Let $\indexedabove{t}{X}\subset\overline{\mathcal{O}}$ be a Feller-Dynkin
+  process for a metric space $\mathcal{O}\subset\mathcal{X}$
+  and consider the probability
+  space $(\Omega, \mathcal{F}, (\mathcal{F}_t), \Pr)$. Denote by $T$
+  the infimum over times $t$ for which $X_t\not\in\mathcal{O}$. For any
+  measurable function $\phi$ that is absolutely continuous
+  and differentiable almost everywhere, the function $u(x, s) =
+  \mathbf{E}[\phi(X_T)\mid X_{s\land T} = x]$ solves the PDE
+
+  \begin{equation}
+    \label{eq:kbe}
+    \partialderiv{u(x, s)}{s} = -\mathscr{L}u(x, s)
+  \end{equation}
+
+  with the terminal condition $u(x, t) = \phi(x)$ when
+  $x\in\overline{\mathcal{O}}\setminus\mathcal{O}$, where
+  $\mathscr{L}$ is the infinitesimal generator of the process
+  $(X_t)_{t\geq 0}$.
+\end{theorem}
+
+In order to prove Theorem \ref{thm:kbe}, the following lemma will be
+handy.
+
+\begin{lemma}[\citep{le2016brownian}, Theorem 6.14]\label{lem:martingale-generator}
+  Let $(X_t)_{t\geq 0}$ be a Feller-Dynkin process on a metric space
+  $\mathcal{X}$, and consider functions $h, g\in
+  C_0(\mathcal{X})$. The following two conditions are equivalent:
+  \begin{enumerate}
+  \item $h\in\mathscr{D}(\mathscr{L})$ and $\mathscr{L}h = g$;
+  \item For each $x\in\mathcal{X}$, the process
+    \begin{equation*}
+      \Conditional{h(X_t) - \int_0^tg(X_s)ds}{X_0 = x}
+    \end{equation*}
+    is a \hyperref[app:martingale]{martingale} with respect to
+    the filtration $(\mathcal{F}_t)$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}[Proof of Theorem \ref{thm:kbe}]
+  By Lemma \ref{lem:martingale-generator}, we know that the process
+  $\Phi_t = \phi(X_t) -  \int_0^tg(X_s)ds$ is a martingale with
+  respect to $(\mathcal{F}_t)$. Let $s<t<T$. By the definition of a
+  martingale, we have
+
+  \begin{equation*}
+    \small
+    \begin{aligned}
+      0 = \Expectation{}{\Conditional{\Phi_T}{\mathcal{F}_t}} -
+      \Expectation{}{\Conditional{\Phi_T}{\mathcal{F}_s}} &=
+    \Expectation{}{\Conditional{h(X_T) +
+        \int_0^Tg(X_r)dr}{\mathcal{F}_t}} -
+    \Expectation{}{\Conditional{h(X_T) + \int_0^Tg(X_r)dr}{\mathcal{F}_s}}\\
+    \Expectation{}{\Conditional{h(X_T)}{\mathcal{F}_t}} -
+    \Expectation{}{\Conditional{h(X_T)}{\mathcal{F}_s}} &=
+    \Expectation{}{\Conditional{\int_s^t\mathscr{L}h(X_r)dr}{\mathcal{F}_t}}\\
+    \end{aligned}
+  \end{equation*}
+
+  Dividing through by $t - s$ and taking the limit as $s\uparrow t$,
+
+  \begin{equation*}
+    \begin{aligned}
+      \partialderiv{}{s}\Expectation{}{\Conditional{\phi(X_T)}{\mathcal{F}_s}}
+      = \partialderiv{}{s}u(x, s)
+      &\overset{(a)}{=}
+      \Expectation{}{\Conditional{\partialderiv{}{s}\int_s^t\mathscr{L}\phi(X_r)dr}{\mathcal{F}_t}}\\
+      &= -\Expectation{}{\Conditional{\mathscr{L}\phi(X_r)dr}{\mathcal{F}_s}}\\
+      &\overset{(b)}{=}-\mathscr{L}\Expectation{}{\Conditional{\phi(X_s)}{\mathcal{F}_s}}\\
+      &= -\mathscr{L}u(x, s)
+    \end{aligned}
+  \end{equation*}
+
+  Step $(a)$ is allowed by the Leibniz integration rule since the
+  infinitesimal generator preserves continuity and $\phi$ is
+  absolutely continuous by assumption. Finally, step $(b)$ is allowed
+  by the linearity of expectation, since $\mathscr{L}$ is a linear operator.
+\end{proof}
+
+Of particular interest is the case where $\phi(\xi; A) = \chi_A(\xi)$
+for any Borel set $A$, where $\chi_A(a) = \indicator{a\in A}$ is the
+characteristic function for $A$. With our
+\hyperref[def:truncated-return]{truncated return process} 
+$\indexedabove{t}{J}$, we have
+
+\begin{equation}
+  \label{eq:phi-chi}
+  u_t(z; A) \triangleq \Expectation{}{\Conditional{\chi_A(\overline{G}_T)}{\mathcal{F}_t}}
+  = \Pr(G_T\in A\mid X_t=x, \overline{G}_t = \xi)\qquad z = (x, \xi)\\
+\end{equation}
+
+Since $J_T=(X_T, \overline{G}_T)$ and $G_T=G_x^\pi$ is understood to
+be the ``truncated''\footnote{Of course, since $\overline{G}_T$ is the
+  discounted return at the end of the episode, nothing is actually
+  truncated.} return at the end of a  rollout, $u$ can be
+interpreted as the probability measure over returns starting at a given state!
+
+\section{A Characterization of the Return Distributions}\label{s:characterization}
+We're now ready to demonstrate that the return distribution function
+can be expressed as a solution to a Kolmogorov backward equation.
+
+\begin{theorem}[Distributional HJB Equation for Policy Evaluation]
+  \label{thm:dhjb}
+  Let $(\mathcal{X}, \mathcal{A}, r, \indexedabove{t}{P}, \gamma)$ be
+  a continuous-time MDP on which a
+  \hyperref[def:truncated-return]{truncated return process}
+  $\indexedabove{t}{J}$ is generated by following a policy
+  $\pi$. Suppose $\indexedabove{t}{X} = \indexedabove{t}{\proj{1}J}$
+  is a \hyperref[def:feller-dynkin]{Feller-Dynkin process}, and denote
+  its \hyperref[def:generator]{infinitesimal generator} by
+  $\mathscr{L}_X$. Recall that the return distribution function is defined such
+  that
+
+  \begin{equation*}
+    G_x^\pi\sim\returnmeasure^\pi(\cdot\mid x)
+  \end{equation*}
+
+  where $G_x^\pi$ is the random return as defined by
+  \eqref{eq:random-return}, and suppose Assumptions
+  \ref{ass:method:bounded-rewards}, \ref{ass:method:density},
+  \ref{ass:method:c2}, and \ref{ass:termination-set} hold.
+
+  Consider the probability space $(\Omega, \mathcal{F},
+  \indexedabove{t}{\mathcal{F}}, \Pr)$ where
+  $\indexedabove{t}{\mathcal{F}}$ is
+  \hyperref[def:canonical-filtration]{the canonical filtration}. Then
+  $\cdf$ satisfies 
+  the following PDE,
+
+  \begin{equation}
+    \label{eq:dhjb}
+    (\mathscr{L}_X\cdf(\cdot, z))(x) -
+    (r(x) + z\log\gamma)\partialderiv{}{z}\cdf(x, z)
+    = 0\qquad\Pr-\text{almost surely}
+  \end{equation}
+
+  where $\cdf(x, z) = \returnmeasure^\pi([V_{\min}, z]\mid
+  x)$.\footnote{Note that $\cdf(x, \cdot)$ is the CDF of the random return at
+    state $x$.}
+\end{theorem}
+
+To aid in the proof of this theorem, we'll first prove some
+lemmas.
+
+\begin{lemma}\label{lem:finite-variation}
+  Let $\indexedabove{t}{J}=(X_t, \overline{G}_t)_{t\geq 0}$ be
+  the \hyperref[def:truncated-return]{truncated return process} defined
+  in Theorem \ref{thm:dhjb}. Then $\indexedabove{t}{\overline{G}}$ is
+  a \hyperref[app:finite-variation]{finite variation process}.
+\end{lemma}
+\begin{proof}
+  By definition, we have
+
+  \begin{equation*}
+    \overline{G}_t = \int_0^t\gamma^sr(X_s)ds
+  \end{equation*}
+
+  Consider the measurable space $(\mathbf{R}_+, \Sigma)$ where
+  $\Sigma$ is the $\sigma$-algebra of Lebesgue-measurable subsets of
+  the nonnegative reals, and let $\Lambda$ denote the Lebesgue
+  measure. We will use $(\mathbf{R}_+,\Sigma)$ to measure \emph{time}. 
+  By the Radon-Nikodym theorem, for each sample path $\omega\in\Omega$ (see
+  Theorem \ref{thm:dhjb}), the function
+  $\mu_\omega:\Sigma\to\mathbf{R}$ shown below is a signed measure on this
+  measurable space,
+
+  \begin{equation*}
+    \mu_\omega(A) = \int_A\gamma^{s\land T(\omega)}r(X_{s\land T(\omega)}(\omega))\Lambda(ds)\qquad A\in\Sigma
+  \end{equation*}
+
+  Then, for any $\omega\in\Omega$, the mapping $t\mapsto G_t(\omega) =
+  \mu_\omega([0,t])$. This shows that each sample path is a function
+  $a:t\mapsto\mu_\omega([0,t])$ for the measure $\mu_\omega$, so every sample path
+  is a finite variation function by definition.
+\end{proof}
+
+\begin{lemma}\label{lem:generator}
+  The truncated return process $\indexedabove{t}{J}$ as defined in
+  Theorem \ref{thm:dhjb} is a \hyperref[def:fd]{Feller-Dynkin process}.
+\end{lemma}
+\begin{proof}
+  Consider the \hyperref[def:filtration]{filtered probability space}
+  $\mathsf{P} = (\Omega, \mathcal{F},
+  \indexedabove{t}{\mathcal{F}}, \Pr)$ defined
+  \hyperref[def:probability-space]{previously}. Proposition
+  \ref{pro:markov} shows that $\indexedabove{t}{J}$ is a Markov process. It remains to
+  show that it is a Feller-Dynkin process. First, we must show that
+  its transition semigroup maps $\indexedabove{t}{P}$ are
+  endomorphisms on $C_0(\mathcal{X}\times\returnspace)$. Let
+  $\psi\in C_0(\mathcal{X}\times\returnspace)$.
+
+  Note that since $\indexedabove{t}{X}$ has continuous sample paths,
+  $\indexedabove{t}{\overline{G}}$ has absolutely continuous sample
+  paths since
+
+  \begin{equation*}
+    G_t(\omega) = \int_0^t\gamma^sr(X_s(\omega))ds \qquad
+    \omega\in\Omega
+  \end{equation*}
+
+  so it is bounded by the integral of a bounded function. Therefore
+  $P_\delta\psi$ can be expressed as
+
+  \begin{align*}
+    P_\delta\psi &= \int \psi\circ (X_{t+\delta}, \overline{G}_{t+\delta})d\Pr
+  \end{align*}
+
+  Since the sample paths $X_{t+\delta},\overline{G}_{t+\delta}$ are
+  continuous, the integrand above is a continuous
+  function. Additionally, since $\psi,\mathcal{X},\returnspace$ are
+  all compactly supported, we see that $P_\delta\psi$ is as
+  well. Therefore $P_\delta\psi\in C_0(\mathcal{X}\times\returnspace)$.
+
+  It is easy to check that $P_0\psi=\identity$. This follows simply
+  from the fact that $\indexedabove{t}{X}$ is a Feller-Dynkin process
+  (so its semigroup has an identity) and
+  $\indexedabove{t}{\overline{G}}$ is deterministic given
+  $\indexedabove{t}{X}$. For the same reason, it follows that $P_tP_s=P_{t+s}$.
+
+  It remains to show that $\|P_\delta\psi - P_0\psi\|\overset{\delta\downarrow
+    0}{\longrightarrow} 0$. We have
+
+  \begin{align*}
+    \left\|P_\delta\psi - P_0\psi\right\| &= \left\|P_\delta\psi - \psi\right\|\\
+    &= \left\|\int\left(\psi\circ(X_{t+\delta},
+      \overline{G}_{t+\delta}) - \psi(X_t, \overline{G}_t)\right)d\Pr\right\|\\
+    &= \left\|\int\psi\circ(X_{t+\delta},
+      \overline{G}_{t+\delta})d\Pr - \psi(X_t, \overline{G}_t)\right\|\\
+  \end{align*}
+
+  Since $\psi$ is supported on a compact finite-dimensional set and it
+  is continuous, it follows that it is bounded. Therefore, it follows
+  by the dominated convergence theorem that
+
+  \begin{align*}
+    \lim_{\delta\to 0}\int\psi\circ(X_{t+\delta},
+    \overline{G}_{t+\delta})d\Pr &= \int\psi\circ\lim_{\delta\to
+                                   0}(X_{t+\delta}, \overline{G}_{t+\delta})d\Pr\\
+                                 &= \int\psi(X_t, \overline{G}_t)d\Pr\\
+    &= \psi(X_t, \overline{G}_t)
+  \end{align*}
+  This proves the claim.
+\end{proof}
+
+\begin{corollary}\label{cor:generator}
+  The truncated return process $\indexedabove{t}{J}$ defined in
+  Theorem \ref{thm:dhjb} has an infinitesimal generator
+  $\mathscr{L}:C_0(\mathcal{X}\times\returnspace)\to
+  C_0(\mathcal{X}\times\returnspace)$
+  given by
+
+  \begin{equation}
+    \label{eq:truncated-return:generator}
+    \mathscr{L}\psi(x, \overline{g}) = (\mathscr{L}_X\psi(\cdot, \overline{g}))(x) +
+    r(x)\partialderiv{}{\overline{g}}\psi(x, \overline{g})
+  \end{equation}
+
+  where $\mathscr{L}_X$ is the infinitesimal generator of the process
+  $\indexedabove{t}{\proj{1}J} = \indexedabove{t}{X}$.
+\end{corollary}
+\begin{proof}
+  Since Lemma \ref{lem:generator} shows that $\indexedabove{t}{J}$ is
+  a \hyperref[def:fd]{Feller-Dynkin process}, the existence of an
+  infinitesimal generator driving this process is guaranteed.
+  Let $\psi\in C^2_0(\mathcal{X}\times\returnspace)$. Then
+
+  \begin{align*}
+    \frac{P_\delta\psi(j) - \psi(j)}{\delta}
+    &=
+      \frac{1}{\delta}\left(\ConditionExpect{\psi(J_{t+\delta})}{J_t =
+      j} - \psi(j)\right)\\ 
+    &= \ConditionExpect{\frac{1}{\delta}\left(\psi(J_{t+\delta}) -
+      \psi(J_t)\right)}{J_t = j}\label{eq:proof:fd:expectation}\tag{$*$}\\
+  \end{align*}
+
+  We will proceed by applying \hyperref[app:ito]{\Ito's Lemma} to this
+  expectation. However, we must first verify that $\indexedabove{t}{J}$
+  satisfies the hypotheses of \Ito's Lemma, namely, it must be a
+  \hyperref[app:martingale]{semimartingale}. It is easy to verify that this is
+  the case. We can express $\indexedabove{t}{J}$ as
+
+  \begin{align*}
+    J_t &= \overbrace{(X_t - \Expect{X_t}, 0)^\top}^{M_t} + \overbrace{(\Expect{X_t},
+      \overline{G}_t)^\top}^{A_t}
+  \end{align*}
+
+  It follows immediately from Lemma \ref{lem:finite-variation} that
+  $\indexedabove{t}{A}$ is a \hyperref[app:finite-variation]{finite variation
+  process}. Furthermore, since $\indexedabove{t}{X}$ is a Feller-Dynkin
+  process, we know from Lemma \ref{lem:martingale-generator} that $(X_t -
+  \Expect{X_t})_{t\geq 0}$ is a \hyperref[app:martingale]{martingale}. Thus,
+  $\indexedabove{t}{J}$ can be expressed as a sum of a
+  \hyperref[app:martingale]{local martingale}\footnote{By the definition of a
+  local martingale, given in Appendix \ref{app:martingale}, it is clear that all
+  martingales are local martingales.} and a finite variation process, making it a
+  semimartingale by definition.
+
+  Since $\indexedabove{t}{J}$ is a semimartingale and $\psi\in
+  C_0^2(\mathcal{X}\times\returnspace)$, we may apply \hyperref[app:ito]{\Ito's
+  lemma} to expand \eqref{eq:proof:fd:expectation} as follows,
+
+  {\small %
+  \begin{align*}
+    \small
+    \frac{P_\delta\psi(j) - \psi(j)}{\delta}
+    &= \frac{1}{\delta}\ConditionExpect{\int_t^{t+\delta}\sum_{i=1}^{d+1}\partialderiv{\psi(J_s)}{j^i}dJ_s^i
+      +
+      \frac{1}{2}\int_t^{t+\delta}\sum_{i=1}^{d+1}\sum_{k=1}^{d+1}\frac{\partial^2\psi(J_s)}{\partial
+      j^i\partial j^k}d[J^i, J^k]_s}{J_t=j}\\
+    &= \overbrace{\frac{1}{\delta}\ConditionExpect{\int_t^{t+\delta}\sum_{i=1}^{d}\partialderiv{\psi(J_s)}{j^i}dJ_s^i
+      +
+      \frac{1}{2}\int_t^{t+\delta}\sum_{i=1}^{d}\sum_{k=1}^{d}\frac{\partial^2\psi(J_s)}{\partial
+      j^i\partial j^k}d[J^i, J^k]_s}{J_t=j}}^a\\
+    &\qquad+
+      \overbrace{\frac{1}{\delta}\ConditionExpect{\int_t^{t+\delta}\partialderiv{\psi(J_s)}{j^{d+1}}dJ^{d+1}_s
+      + \frac{1}{2}\frac{\partial^2\psi(J_s)}{\partial (j^{d+1})^2}d[J^{d+1},J^{d+1}]_s}{J_t=j}}^b\\
+    &\qquad+
+      \overbrace{\frac{1}{2\delta}\ConditionExpect{\int_t^{t+\delta}\sum_{i=1}^d\frac{\partial^2\psi(J_s)}{\partial
+      j^i\partial j^{d+1}}d[J^i, J^{d+1}]_s}{J_t=j}}^c
+  \end{align*}
+  }
+
+  Recall that $J^{1:d}_t = \proj{1}J_t = X_t$, and $J^{d+1}_t =
+  \proj{2}J_t = \overline{G}_t$. In the limit as $\delta\downarrow 0$,
+  the term $a$ above therefore is
+  simply the generator of the process $\indexedabove{t}{X}$ applied to
+  $\psi$. Moreover, since it was shown that
+  $\indexedabove{t}{\overline{G}}$ is a finite variation process in
+  Lemma \ref{lem:finite-variation}, it follows that $[J^i,
+  J^{d+1}]\equiv 0$ for any $i\in [d+1]$
+  \citep{le2016brownian}. Consequently, we have $c\equiv
+  0$. Simplifying,
+
+  \begin{align*}
+    \lim_{\delta\to 0}\frac{P_\delta\psi(j) - \psi(j)}{\delta}
+    &= \mathscr{L}_X\psi(j) + \lim_{\delta\to
+      0} \frac{1}{\delta}\ConditionExpect{ \int_t^{t+\delta}
+      \partialderiv{\psi(J_s)}{\overline{g}}d\overline{G}_s}{J_t =
+      j} + \partialderiv{\psi( j)}{t}\\
+    &= \mathscr{L}_X\psi(j) +
+      \partialderiv{\psi(j)}{\overline{g}}r(X_t)
+  \end{align*}
+
+  This completes the proof.
+\end{proof}
+
+Now we're ready to prove the main result of this section.
+
+\begin{proof}[Proof of Theorem \ref{thm:dhjb}]
+  We want to study the probability measure
+  $\returnmeasure^\pi(\cdot\mid x)$, where $x$ can be an
+  arbitrary state in $\mathcal{X}$.
+  Recall that the truncated return process is defined such that
+
+  \begin{align*}
+    \Conditional{G_x^\pi \eqlaw \overline{G}_T}{X_0 = x}
+  \end{align*}
+
+  It's important to note the condition that $X_0 = x$. In particular
+
+  \begin{align*}
+    G_{x_t}^\pi\overset{\mathcal{L}}{\neq} \overline{G}_T
+  \end{align*}
+
+  Rather, we have, for $t\leq T$
+
+  \begin{align*}
+    \overline{G}_T &\eqlaw \int_0^T\gamma^sr(X_s)ds\\
+    &\eqlaw \int_0^{t}\gamma^sr(X_s)ds +
+      \int_{t}^T\gamma^sr(X_s)ds\\
+    &\eqlaw \overline{G}_t + \gamma^t\int_0^{T-t}\gamma^sr(X_{s+t})ds\\
+  \end{align*}
+  
+  Therefore, the \emph{time-adjusted random return} is expressed by
+
+  \begin{align*}
+    \Conditional{\frac{\overline{G}_T - \overline{G}_t}{\gamma^t}
+                   \eqlaw G_{x_t}^\pi}{X_0 = x_t, \overline{G}_0 = 0}\\
+  \end{align*}
+
+  We'll express the return measure function as the density of the
+  time-adjusted random return. For any Borel set
+  $A\subset\returnspace$, we have
+
+  \begin{align*}
+    \returnmeasure^\pi(A\mid j) &= \ConditionExpect{\phi_z(\overline{G}_T)}{J_t=j}\\
+    \phi_z &= \characteristic{\gamma^{-t}(A - \overline{G}_t)}\\
+    \gamma^{-t}(A - \overline{G}_t) &= \{\gamma^{-t}(z -
+                                      \overline{G}_t) : z\in A\}
+  \end{align*}
+
+  Note that $\cdf$ is a solution to
+  the \hyperref[thm:kbe]{Kolmogorov backward equation} for
+  $\indexedabove{t}{J}$.
+  However, we want to express $\returnmeasure^\pi$ as the solution to
+  an equation governed by the process
+  $\gamma^{-t}(Z_t(z))_{t\geq 0}$ where $Z_t(z) = \gamma^{-t}(z -
+  \overline{G}_t)$ for any return $z$. By applying the
+  \hyperref[app:feynman-kac]{Feynman-Kac formula} (shown in
+  Theorem \ref{thm:feynman-kac}) to the generator derived in
+  Lemma \ref{lem:generator}, the generator
+  $\mathscr{L}^\star$ corresponding to the process $(X_t, Z_t(z))$
+  is given by
+
+  \begin{align*}
+    \mathscr{L}^\star &= \overline{\mathscr{L}} - \log\gamma\proj{2}
+  \end{align*}
+
+  where $\overline{\mathscr{L}}\psi(x, z) = \mathscr{L}\psi(x, -z)$ since $\frac{dz}{d\overline{g}} = -1$.
+
+  Finally, since $\returnmeasure^\pi(\cdot\mid x)$ is supposed to be a
+  stationary distribution, the Kolmogorov backward equation for the generator
+  $\mathscr{L}^\star$ becomes
+
+  \begin{align*}
+    0 &= \partialderiv{}{t}\cdf(x, z) =
+        -\mathscr{L}_Z^\star\cdf(x, z)\\
+    &= \mathscr{L}_X\cdf(x, z)
+      -\left(r(x)+
+      z\log\gamma\right)\partialderiv{}{z}\cdf(x, z),
+  \end{align*}
+
+  as claimed. Since $\returnmeasure^\pi(\cdot\mid x)$ is assumed to be
+  absolutely continuous, the existence of $\partialderiv{\cdf}{z}$ is guaranteed.
+\end{proof}
+
+The process $(X_t, Z_t(z))_{t\geq 0}$ used in this proof will be referred to henceforth as
+the \emph{conditional backward return process}. Following is its formal definition.
+
+\begin{definition}[Conditional Backward Return
+  Process]\label{def:conditional-backward-return}
+  Let $\indexedabove{t}{J} = (X_t, \overline{G}_t)_{t\geq 0}$ denote the
+  \hyperref[def:truncated-return]{truncated return process} with a discount
+  factor $\gamma$ induced by
+  an agent following a fixed policy to produce the Markov process
+  $\indexedabove{t}{X}\subset\mathcal{X}$. The \emph{conditional backward return
+  process} conditioned on the return taking value $z\in\returnspace$ is the process
+  $\indexedabove{t}{\cbrprocess(z)}:\mathbf{R}_+\to\mathcal{X}\times\returnspace$
+  given by
+
+  \begin{align*}
+    \cbrprocess(z)_t &= (X_t, \gamma^{-t}(z - \overline{G}_t))\\
+  \end{align*}
+
+\end{definition}
+
+Unlike the truncated return process which accumulates rewards ``forward in
+time", the conditional backward return process conditions on a given return
+$z$ and describes the return left to be obtained in order to attain a return of
+$z$.
+
+\begin{corollary}[The Distributional HJB Equation for
+  \Ito\ Diffusions]\label{cor:dhjb}
+  Under the assumptions of Theorem \ref{thm:dhjb} as well as
+  Assumption \ref{ass:method:ito-diffusion}, the stationary return
+  distribution function $\returnmeasure^\pi$ satisfies the
+  following equation,
+  %
+  \begin{equation}
+    \label{eq:dhjb:ito}
+    \small
+    0 = \langle\nabla_x\cdf(x, z), f_\pi(x)\rangle +
+    \trace\left(\quadraticform{\pmb{\sigma}_\pi(x)}{\hessian{x}\cdf(x, z)}\right)
+      - \left(r(x) + z\log\gamma\right)\partialderiv{}{z}\cdf(x, z)
+  \end{equation}%
+\end{corollary}
+\begin{proof}
+  This result follows directly from Theorem \ref{thm:dhjb}, since the
+  \hyperref[def:generator]{infinitesimal generator} $\mathscr{L}_X$ of an \Ito\
+  Diffusion $\indexedabove{t}{X}$ governed by
+
+  \begin{align*}
+    dX_t = f_\pi(X_t)dt + \pmb{\sigma}_\pi(X_t)dB_t
+  \end{align*}
+
+  is known \citep{rogers1994diffusions, villani2008optimal, Jordan02thevariational} to be
+
+  \begin{align*}
+    \mathscr{L}_X\phi = \langle\nabla\phi, f_\pi\rangle +
+    \trace\left(\quadraticform{\pmb{\sigma}_\pi}{\hessian{}\phi}\right)
+  \end{align*}%
+\end{proof}
+\begin{remark}
+  Readers that are familiar with optimal control theory may notice a
+  similarity between \eqref{eq:dhjb:ito} and the HJB equation
+  \citep{fleming2006controlled}. In fact, it can be seen that in the
+  case of deterministic dynamics, \eqref{eq:dhjb:ito} is equivalent to
+  the deterministic HJB equation in the policy
+  evaluation setting, in a weak sense. When the dynamics are 
+  deterministic, we have $\pmb{\sigma}_\pi\equiv 0$, and the return
+  distribution function is given by $\returndistribution^\pi(\cdot\mid
+  x)= \partialderiv{}{z}\cdf(x, z) =
+  \dirac{V^\pi(x)}$,
+  where $V^\pi(x) = \int_0^T\gamma^sr(X_s)ds$
+  is the value function. When $z=V^\pi(x)$, \eqref{eq:dhjb} reduces to
+
+  \begin{align*}
+    0 &= -\langle\nabla_xV^\pi(x),f_\pi(x)\rangle -r(x) - \log\gamma
+        V^\pi(x)\\
+    &= \langle\nabla_xV^\pi(x), f_\pi(x)\rangle + r(x) + \log\gamma V^\pi(x)
+  \end{align*}
+
+  which is precisely the HJB equation with an infinite
+  time horizon \citep[Theorem 1]{Munos2004ASO} in the policy
+  evaluation setting.
+
+  For $z\neq V^\pi(x)$, we are left with
+  $\langle\nabla_xV^\pi(x),f_\pi(x)\rangle = 0$, which simply states
+  that the agent is moving orthogonally to the direction of
+  steepest ascent of the value function.
+\end{remark}

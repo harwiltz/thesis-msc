@@ -1,0 +1,224 @@
+\begin{savequote}[0.55\linewidth]
+  ``... on the planet Earth, man had always assumed that he was more
+  intelligent than dolphins because he had achieved so much -- the
+  wheel, New York, wars and so on -- whilst all the dolphins had ever
+  done was muck about in the water having a good time. But conversely,
+  the dolphins had always believed that they were far more intelligent
+  than man -- for precisely the same reasons.''
+  \qauthor{Douglas Adams, \emph{The Hitchhiker's Guide to the Galaxy}}
+\end{savequote}
+
+\chapter{Introduction}
+Reinforcement learning (RL) is a form of artificial intelligence with the
+ambition of creating \emph{general purpose} problem-solving algorithms
+that improve with experience. Unlike other machine learning tasks,
+generally RL algorithms begin with no understanding of the problem to
+be solved, and are not given any data to learn from. Consequently,
+aside from learning how to solve a problem, an RL algorithm must also
+learn how to gather data to improve itself by maximizing the long term
+\emph{returns} accumulated by the agent due to good behavior. A common paradigm in RL is
+based on estimating the expected value, measured in cumulative future
+rewards, should the agent follow a given strategy. Due to the
+uncertainty of how the agent's actions affect the environment and the rewards,
+estimating the expected value of a strategy can be quite difficult.
+
+The expectation of the return, however, is not necessarily the best metric for
+evaluating strategies. Expected values are most meaningful when the
+random variable can be sampled arbitrarily many times, in which case
+the many samples ``balance each other out'' to a net quantity that is
+approximated well by the expectation. However, this is not always (and
+perhaps not even usually) the setting that RL algorithms find
+itself in. When fewer samples can be drawn, individual samples
+have a much larger impact and may never be ``balanced out''.
+
+More concretely, consider a scenario in which an agent is presented
+with a wager, and the agent can decide whether to take the wager or
+not. Suppose the wager costs \$1,000, and by playing the wager the agent
+wins \$100,000 with probability $1/10$. The expected value of this
+wager is simply calculated as $(1/10)\times \$100000 - (9/10)\times
+\$1000 = \$9,100$. Using expected value as a means of decision making,
+we see that the agent should take the wager, as it expects a profit of
+\$9,100 each time the wager is played. However, often this kind of
+reasoning can fail, especially when the agent has no knowledge of how
+the rewards are generated. Reinforcement learning agents are generally
+not assumed to have any such knowledge, so they have to estimate it by
+observing samples of state transitions and rewards from the
+environment (or more commonly, a simulator of the
+environment). Suppose the agent observes many samples and is very
+confident in its estimate of the expected return for the wager, and is
+subsequently given only three more opportunities to play. More likely
+than not, the agent will not win the wager within three
+attempts. Should the agent still play the wager since its expected
+value is high, or should it simply pass since most likely it'll lose
+$\$3,000$? At the very least, one can make a reasonable argument for
+each choice. In particular, if the agent would not have enough money to
+feed its children if it were to lose $\$3,000$, it is likely that most
+people would agree that playing the wager is irresponsible, and
+ultimately the ``correct'' decision depends on the agent's ethos.
+
+Interestingly, there are relatively common scenarios where
+the more dangerous scenario might be preferred by some people when an
+experiment cannot be run as many times as desired. An amusing example
+of this is popular in online speed chess, where players have very
+little time to spend pondering moves. The following is a demonstration
+of \emph{the Lefong trap}\footnote{This trap was popularized by the
+  Canadian FIDE Master Lefong Hua.} that is sometimes played in these games:
+
+\begin{center}
+\newgame
+
+\mainline{1.d4 g6 2.Bh6}
+
+\showboard
+\end{center}
+
+White's second move, with regard to general chess strategy, is
+horrendous: the move leaves the bishop undefended and in the line of
+attack of black's bishop and knight. White was likely hoping for the
+following continuation:
+
+\begin{center}
+  \begin{minipage}{0.48\linewidth}
+    \centering
+    \mainline{2...Bg7}
+
+    \showboard
+  \end{minipage}
+  \begin{minipage}{0.48\linewidth}
+    \centering
+    \mainline{3.Bxg7}
+
+    \showboard
+  \end{minipage}
+\end{center}
+
+Black's second move in this hypothesized continuation from white is
+even worse than white's second move! One may reasonably wonder then
+why the Lefong trap is ever played, and the reason is simple: in such fast
+chess games, sites allow the players to ``pre-move'' -- that is,
+commit to a move during the opponent's turn, to avoid spending any
+time on their own turn. When black played the move \texttt{g6}, their
+intention was almost surely to follow it with \texttt{Bg7} (this is
+called \emph{the modern defense}), making it a great candidate for a
+pre-move. White exploits this by playing a horrible (but unaccounted
+for) move that only works because black, hopefully, waives his ability
+to respond to \texttt{Bh6}. If black \emph{does not} pre-move
+\texttt{Bg7}, white's \texttt{Bh6} loses them the game. In 2018,
+teenaged grandmaster Andrew Tang defeated Magnus Carlsen, the world
+champion and highest rated player of all time, using the Lefong
+trap\footnote{See https://www.youtube.com/watch?v=Kr5sxSja2D8.}.
+
+The expected return of the Lefong move \texttt{Bh6} is
+surely far from optimal. Should Andrew Tang have attempted this
+move game after game, it would fail far more often than not, so his
+strategy in this case could not have been based on the expected value
+of his move. However, given that the move would not be played many
+times, and he may never have the opportunity to beat a world champion
+with the Lefong again, Andrew Tang was able to justify his move.
+
+The theory of \emph{distributional} RL can aid in addressing these
+types of conundrums by learning the entire probability distribution over the
+cumulative future returns due to a given strategy, as opposed to just
+the expected value. Given an understanding of the distribution over
+returns, one has much more information at their disposal to aid in decision-making, for
+example, by accouting for the variance of the return to make the
+risk-averse decision of declining a wager, or by
+preferring decisions that lead potential to exceptionally high
+rewards like defeating a world champion at their game.
+
+Since its introduction in \citet{Bellemare2017ADP}, distributional RL
+has gained lots of interest within the reinforcement learning
+community, partly because of its impressive empirical
+performance. Even when distributional RL is employed and decisions are
+made just by comparing the means of return distributions,
+distributional RL still tends to out-perform its expected value
+counterparts. \citet{Bellemare2017ADP} attributes this to the fact
+that by modeling potential multimodalities in the return
+distributions, distributional algorithms may be less sensitive to
+noise in stochastic training procedures. Additionally, reinforcement learning
+algorithms tend to approximate returns under the assumption that the policy is
+not changing over time, which generally is not the case -- of course, in order
+for an agent to improve at a task, it must change its policy. By modeling the
+full distribution over returns, this phenomenon can be manifested in the
+uncertainty associated with return distributions, which is believed to help
+stabilize training.
+
+Moreover, another interesting prospect for learning return
+distributions is that they can be used to promote \emph{exploration}
+in a principled manner. Since RL algorithms usually have to collect
+their own data in order to learn, it is never really clear to them if
+their current idea of an optimal strategy \emph{is} in fact optimal,
+unless they are able to try every strategy in every possible
+scenario. This is generally impossible. Despite being studied since
+the birth of RL research, exploration still remains a major
+challenge, as well as a principle contributor to the poor sample
+complexity often observed in reinforcement learning. Given estimates
+of return distributions, however, it may be possible to use
+uncertainty in the return as a proxy for determining which strategies
+to learn more about \citep{mavrin2019distributional}.
+
+A long-standing issue in reinforcement learning research is that
+the literature usually studies systems that evolve in discrete,
+fixed-duration timesteps. Of course, the real world does not work this
+way, and even many of the synthetic benchmarks are actually modeling processes
+that evolve continuously in time. Not accounting for continuous-time
+processes in RL can lead to detriments in training time, their ability
+to correctly model the value function, and performance
+\citep{doya2000reinforcement, Munos2004ASO, tallec2019making}.
+
+The analysis of continuous-time processes, however, incurs substantial
+mathematical challenges that are not present in discrete time. Even for fully
+deterministic processes with very smooth dynamics and simple controls, in
+general the value function cannot be characterized in a ``classical", intuitive
+sense. This is because in the continuous-time limit, the value function does not
+preserve enough ``smoothness", so it must instead be interpreted as a weakened
+notion of a solution to a PDE \citep{crandall1983viscosity}. Existing work in
+continuous-time reinforcement learning and optimal control has addressed
+stochasticity in the dynamics and the policy, but refrains from studying the
+distribution of the random return by estimating only its mean. The principal
+goal of this thesis is to explore the behavior of the return distribution
+function in the continuous time limit. Given the undesirable non-smoothness of
+the value function in continuous time, it is only natural to suspect that the
+return distribution function, being a function into an infinite-dimensional
+space of probability measures, will have a non-trivial characterization (if it
+exists at all). We will show that indeed the return distribution function does
+exist, and its uniqueness can be established in a weak sense.
+
+Beyond the analytical understanding, we must consider the computational
+challenges involved in estimating the return distribution function, whose image
+is infinite-dimensional. We will show that the manner in which probability
+measures are represented will be reflected in the PDE governing the evolution of
+the return distributions, which is a consequence that has no equivalent
+manifestation in discrete time. We will also discuss a class of representations
+of probability measures that induce a simple and familiar form of the
+characterization, and use this knowledge to study computationally-tractable
+algorithms for distributional policy evaluation that is convergent in the
+continuous time limit.
+
+Aside
+from the concurrent work of \citet{halperin2021distributional}, to our
+knowledge, distributional RL has not been studied in the
+continuous-time setting. This thesis will substantially broaden the
+theory of continuous time distributional reinforcement learning by
+analyzing the characteristics of the evolution of return
+distributions, providing tractable reinforcement learning algorithms
+that learn return distributions that are convergent in the
+continuous-time limit, and by demonstrating that some of the problems
+with learning value functions in continuous-time RL are exacerbated
+when estimating return distributions in continuous-time.
+
+The thesis will be organized as follows. Chapter \ref{c:background}
+provides an overview of the literature of reinforcement learning and
+related fields, and discusses some important results that will be
+useful in the development moving forward. Next, in Chapter
+\ref{c:evolution}, we study how return distributions evolve in time
+and ultimately derive a partial differential equation that
+characterizes return distributions induced by a vast class of
+stochastic processes. Chapter \ref{c:approximate-dp} is concerned with
+framing continuous-time distributional RL as an optimization in the
+space of probability measures, as well as methods of representing
+probability measures and continuous-time evolutions in a tractable
+manner. In Chapter \ref{c:deicide}, we present the DEICIDE framework
+for the construction of continuous-time distributional reinforcement
+leanring algorithms, and we outline a selection of algorithm
+examples. Empirical results of these algorithms are given in \S\ref{s:experiments}.

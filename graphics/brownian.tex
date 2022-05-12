@@ -1,0 +1,46 @@
+\documentclass{standalone}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{pgfplots}
+\pgfplotsset{compat = newest}
+
+\begin{document}
+  \begin{tikzpicture}[xscale=0.65,yscale=0.65]
+    \begin{axis}[
+      title={$\tau = 10^{-1}$},
+      xlabel={$t$},
+      ylabel={$X_t$},
+      xmin=0,
+      xmax=1
+      ]
+      \addplot+[opacity=0.75] table {graphics/brownian111.dat};
+      \addplot+[opacity=0.75] table {graphics/brownian112.dat};
+      \addplot+[opacity=0.75] table {graphics/brownian113.dat};
+    \end{axis}
+  \end{tikzpicture}%
+  \begin{tikzpicture}[xscale=0.65,yscale=0.65]
+    \begin{axis}[
+      title={$\tau = 10^{-2}$},
+      xlabel={$t$},
+      ylabel={$X_t$},
+      xmin=0,
+      xmax=1
+      ]
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian1011.dat};
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian1012.dat};
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian1013.dat};
+    \end{axis}
+  \end{tikzpicture}%
+  \begin{tikzpicture}[xscale=0.65,yscale=0.65]
+    \begin{axis}[
+      title={$\tau = 10^{-3}$},
+      xlabel={$t$},
+      ylabel={$X_t$},
+      xmin=0,
+      xmax=1
+      ]
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian10011.dat};
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian10012.dat};
+      \addplot+[opacity=0.75, no marks] table {graphics/brownian10013.dat};
+    \end{axis}
+  \end{tikzpicture}%
+\end{document}

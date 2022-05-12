@@ -1,0 +1,21 @@
+\documentclass{standalone}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{tikz}
+\usepackage{pgfplots}
+
+\begin{document}
+\begin{tikzpicture}
+  \begin{axis}[
+    xmin={0},
+    xmax={1},
+    ymax={2},
+    xlabel={$x$},
+    ylabel={$V(x)$}
+    ]
+    \addplot+[
+    blue,
+    no marks
+    ] table{graphics/munos-value.dat};
+  \end{axis}
+\end{tikzpicture}
+\end{document}

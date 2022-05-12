@@ -1,0 +1,64 @@
+\documentclass{standalone}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{pgfplots}
+\pgfplotsset{compat = newest}
+
+\newcommand{\scale}{0.72}
+
+\begin{document}
+\begin{tikzpicture}[xscale=\scale, yscale=\scale]
+  \begin{axis}[
+    xmin=-4,
+    xmax=5,
+    ymin=0,
+    ymax=0.35,
+    xlabel={$Z$},
+    ylabel={$\hat\eta(Z)$},
+    title={Mean: $\mathbf{s} = \{\mathbf{E}_{Z\sim\hat\eta}[Z]\}$}]
+    %
+    \addplot+[blue,
+    fill=blue!20,
+    fill opacity=0.5,
+    no marks] table {graphics/representations-pdf.dat};
+    \addplot+[red, ycomb, mark=triangle*] table {graphics/representations-mean.dat};
+  \end{axis}
+\end{tikzpicture}%
+\begin{tikzpicture}[xscale=\scale, yscale=\scale]
+  \begin{axis}[
+    xmin=-4,
+    xmax=5,
+    ymin=0,
+    ymax=0.35,
+    xlabel={$Z$},
+    % ylabel={$\hat\eta(Z)$},
+    title={Quantile: $\mathbf{s} = \{q_{\hat\eta}(\hat\tau_i)\}_{i=1}^N$}]
+    %
+    \addplot+[blue,
+    fill=blue!20,
+    fill opacity=0.5,
+    no marks] table {graphics/representations-pdf.dat};
+    \addplot+[red, ycomb, mark=triangle*] table {graphics/representations-quantile.dat};
+  \end{axis}
+\end{tikzpicture}%
+\begin{tikzpicture}[xscale=\scale, yscale=\scale]
+  \begin{axis}[
+    xmin=-4,
+    xmax=5,
+    ymin=0,
+    ymax=0.35,
+    xlabel={$Z$},
+    % ylabel={$\hat\eta(Z)$},
+    title={Categorical: $\mathbf{s} = \{\mathbf{E}_{Z\sim\hat\eta}[\chi_{p_i}]\}_{i=1}^N$}]
+    %
+    \addplot+[blue,
+    fill=blue!20,
+    fill opacity=0.5,
+    no marks] table {graphics/representations-pdf.dat};
+    \addplot+[red,
+    ybar interval,
+    fill=red!20,
+    fill opacity=0.5,
+    no marks] table {graphics/representations-cat.dat};
+  \end{axis}
+\end{tikzpicture}%
+\end{document}

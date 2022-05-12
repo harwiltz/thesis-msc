@@ -1,0 +1,40 @@
+\chapter{Conclusion}
+In this thesis, we studied the essentially unexplored problem of
+learning return distributions for continuous-time Markov processes. We
+provide theory about the characterization of return measures in the
+continuous-time limit, and analyze how the tractable representation of
+probability measures affect this characterization.
+
+Based on our analysis, we discuss the implementation of 
+algorithms for continuous-time distributional reinforcement learning,
+and we introduce the DEICIDE framework for achieving this.
+Upon testing DEICIDE implementations against some simple control
+benchmarks, we observe that our continuous-time algorithm
+substantially outperforms the Quantile Regression TD learning baseline
+in an environment where the value function is non-differentiable, as
+hypothesized.  In fact, the failure of discrete-time algorithms in
+this setting was far more pronounced in the stochastic case relative
+to our continuous-time implementation.
+
+Finally, we demonstrated that DEICIDE algorithms can be endowed with
+highly nonlinear function approximators such as deep neural
+networks. We see that such implementations are able to accurately
+learn return distribution functions in a stochastic extension of the
+common \textsc{CartPole-v0} benchmark with randomly-sampled timesteps.
+
+To conclude, the results presented in this thesis show promise for
+the prospects distributional reinforcement learning in continuous
+time, however lots of room is left for future work in this field. For
+instance, a distributional extension of Advantage Updating
+\citep{baird1993advantage} is by no means a trivial task, but may
+drastically improve continuous-time distributional RL
+algorithms. Moreover, an interesting future direction in this line of
+work would involve studying methods of simulating and evaluating the
+continuous-time performance of RL algorithms. In this thesis, we very
+briefly touch on this with our experiments that sample random
+timesteps. However, the distribution of the timestep duration was
+essentially arbitrary and may not be a good model for such phenomena
+in the real world, such as randomly-timed observations from robotic
+systems with several sensors. Further investigation into such models
+can potentially reveal further challenges in continuous-time RL that
+could hinder the performance of RL-trained systems in the real world.

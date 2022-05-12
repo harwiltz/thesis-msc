@@ -1,0 +1,157 @@
+\chapter{A Primer on Topology}\label{app:analysis}
+Concepts from the field of topology are mentioned often in this
+thesis. Some definitions and basic results are stated here.
+
+\begin{definition}[Topological Space]\label{def:topology}
+  A \textbf{topological space} is a pair $(X, \mathcal{O})$ consisting of a set
+  $X$ and a collection $\mathcal{O}\subset 2^X$ of subsets of $X$ such
+  that
+  \begin{enumerate}
+  \item $\emptyset\in\mathcal{O}$ and $X\in\mathcal{O}$;
+  \item If $\indexedin{I}{\alpha}{U}\subset\mathcal{O}$, then
+    $\bigcup_{\alpha\in I}U_\alpha\in\mathcal{O}$;
+  \item If $N$ is a finite integer and
+    $\indexedint{i}{N}{U}\subset\mathcal{O}$,
+    then $\bigcap_{i\in[N]}U_i\in\mathcal{O}$.
+  \end{enumerate}
+
+  The set $\mathcal{O}$ is called a \textbf{topology} on $X$, and the
+  elements of $\mathcal{O}$ are called \textbf{open sets}.
+\end{definition}
+
+It is only natural to ask what it means for a set to be closed.
+
+\begin{definition}[Closed Set]
+  Let $(X,\mathcal{O})$ be a topological space. A set $F\subset X$ is
+  said to be \textbf{closed} if its complement is an open set.
+\end{definition}
+
+\begin{remark}
+  It should be noted that openness and closedness are not mutually
+  exclusive properties of sets -- in fact, by the very definition of a
+  topology, the ``whole space'' and the empty set must both be
+  simultaneously open and closed. Such sets are called \textbf{clopen}.
+\end{remark}
+
+The choice of the topology characterizes what it means for a function
+to be continuous and what it means for a sequence to converge (among
+other things).
+
+\begin{definition}[Continuous Function]\label{def:continuity}
+  Let $(X,\mathcal{O}), (Y,\mathcal{U})$ be topological spaces. A
+  function $f:(X, \mathcal{O})\to(Y, \mathcal{U})$ is said to be
+  continuous if its preimage of every open set $U\subset Y$ is an open
+  set in $X$. That is,
+
+  \begin{align*}
+    U\in\mathcal{U}\implies\{x\in X: f(x)\in U\}\in\mathcal{O}
+  \end{align*}
+\end{definition}
+
+\begin{definition}[Convergence]\label{def:convergence}
+  Let $(X,\mathcal{O})$ be a topological space. A sequence
+  $\indexedint{i}{N}{x}\subset X$ is said to \textbf{converge} to a
+  point $x\in X$ if for every open set $U\ni x$ there exists a finite
+  integer $N$ such that $\indexedint[N]{i}{\infty}{x}\subset U$.
+\end{definition}
+
+The following proposition can be verified directly.
+
+\begin{proposition}[The Universal Topology]
+  \label{pro:universal-topology}
+  Let $X = \mathbf{N}$ and let
+  \begin{align*}
+    \mathcal{O} = \{\emptyset, X, U, X\setminus U\}
+  \end{align*}
+  where $U = \{4,8,15,16,23,42\}$. Then any sequence
+  $\indexedint{i}{\infty}{x}\subset X$ such that
+  $\indexedint[N]{i}{\infty}{x}\subset U$ converges to $42$, where $N$
+  is a finite integer. For instance, the sequence $15, 16, 15, 16,
+  \dots\to 42$.
+\end{proposition}
+
+\section{Metric Spaces}\label{s:metric-space}
+Proposition \ref{pro:universal-topology} should be a little
+alarming. Indeed, many topological spaces are quite
+pathological. Usually we restrict our interests to spaces with a
+little more structure, such as a spaces that can be equipped with a
+meaningful notion of distance.
+
+\begin{definition}[Metric Space]\label{def:metric-space}
+  A \textbf{metric space} is a pair $(X, d_X)$ where $X$ is a set and
+  $d_X:X\times X\to\mathbf{R}_+$, called a \textbf{metric} or a
+  distance function, satisfies
+  \begin{enumerate}
+  \item (\emph{Separation of points}) For any $x,y\in X$, $d_X(x, y) = 0\iff
+    x = y$;
+  \item (\emph{Symmetry}) For any $x,y\in X$, $d_X(x, y) = d_X(y, x)$;
+  \item (\emph{Triangle inequality}) For any $x,y,z\in X$, $d_X(x,
+    z)\leq d_X(x, y) + d(y, x)$.
+  \end{enumerate}
+\end{definition}
+
+A metric space is a special case of a topological space, where the
+topology is understood to be the smallest topology\footnote{The
+  \emph{smallest} topology conforming to some constraint is the
+  intersection of all topologies that conform to the constraint.} containing all open
+balls $B_r(x) = \{y\in X : d_X(x, y)<r\}$. Notably, not every
+topological space has a metric structure. For instance, there is no
+function on $\mathbf{N}$ with the
+\hyperref[pro:universal-topology]{universal topology} that satisfies
+the metric properties.
+
+\begin{remark}
+  The definitions of \hyperref[def:continuity]{continuity} and
+  \hyperref[def:convergence]{convergence} on metric spaces coincide
+  with those that are given in standard calculus courses.
+\end{remark}
+
+\begin{definition}[Cauchy Sequence]
+  Let $(X, d)$ be a metric space. A sequence
+  $\indexedint{i}{\infty}{x}\subset X$ is called a \textbf{Cauchy
+    sequence} if for every $\epsilon>0$ there exists a finite integer
+  $N$ such that
+
+  \begin{align*}
+    d(x_n, x_m)\leq\epsilon\qquad\forall m,n\geq N
+  \end{align*}
+\end{definition}
+
+\begin{remark}
+  Counterintuitively, Cauchy sequences may not converge. A sequence
+  only converges (in a given topological space) if the limit lies in
+  the space. For instance, the sequence
+  $\indexedint{k}{\infty}{x}\subset (0,1)$ where $x_k=\frac{1}{k}$ is
+  Cauchy, but its limiting value is $0$ which is not in $(0,1)$.
+\end{remark}
+
+\begin{definition}[Complete Space]\label{def:complete}
+  A metric space $(X, d)$ is said to be \textbf{complete} if every
+  Cauchy sequence in $X$ converges in $X$. By the previous remark, the
+  set $(0,1)$ is not complete with the standard topology on the real numbers.
+\end{definition}
+
+Finally, we demonstrate a useful property of metric spaces.
+
+\begin{lemma}[Well-behaved convergence]\label{lem:metric:convergence}
+  In any metric space $(X, d)$, no sequence can converge to more than
+  one point.
+\end{lemma}
+\begin{proof}
+  Suppose $\indexedint{k}{\infty}{x}\subset X$ has limits $x, y$. Then
+
+  \begin{align*}
+    \lim_{k\to\infty}d(x_k, x) &= 0\\
+  \end{align*}
+
+  Moreover, by the triangle inequality, for any $k$ we have $d(x,
+  y)\leq d(x, x_k) + d(x_k, y)$. Therefore,
+
+  \begin{align*}
+    d(x, y) &\leq \lim_{k\to\infty}d(x, x_k) + \lim_{k\to\infty}d(x_k,
+              y)\\
+    &= d(x_k, y)
+  \end{align*}
+  So if $x_k\to y$, then we must have $d(x, y) = 0$, and by the
+  separation of points property this implies that $x=y$.
+\end{proof}
